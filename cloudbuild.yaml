@@ -1,0 +1,26 @@
+# steps:
+#   - name: 'gcloud'
+#     args:
+#       - 'secrets'
+#       - 'version'
+#       - 'access'
+#       - 'latest'
+#       - '--secret=gcp-storage'
+#       - '> gcp-keys.json'
+#   # Build the container image
+#   - name: 'gcr.io/cloud-builders/docker'
+#     args: ['build', '-t', '$_IMAGE_URL', '.']
+#     env:
+#       - 'GOOGLE_APPLICATION_CREDENTIALS=gcp-keys.json'
+#   # Push the container image to Container Registry
+#   - name: 'gcr.io/cloud-builders/docker'
+#     args: ['push', '$_IMAGE_URL']
+#   # Deploy the container image to Cloud Run
+#   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+#     entrypoint: gcloud
+#     args: ['run', 'deploy', '$_CUSTOM_SERVICE_NAME', '--image', '$_IMAGE_URL', '--region', '$_REGION', '--allow-unauthenticated']
+# substitutions:
+#   _REGION: 'us-central1' # Default region; this can be overridden in the trigger configuration
+#   _CUSTOM_SERVICE_NAME: 'ezml-fastapi-dev' # Default service name; this can be overridden in the trigger configuration
+#   _CUSTOM_PROJECT_ID: 'ezml-dev-417920' # Default project ID; this can be overridden in the trigger configuration
+#   _IMAGE_URL: 'gcr.io/ezml-dev-417920/ezml-fastapi-dev-img' # Default image URL; this can be overridden in the trigger configuration
