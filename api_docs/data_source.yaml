@@ -1,0 +1,113 @@
+openapi: 3.0.0
+info:
+  title: Data Source API
+  description: >
+    API for uploading files (.csv, .xlsx, .parquet, .gz.csv) and connecting to various data sources 
+    (MySQL, Redshift, Big Query, Data Factory, S3, Cloud Storage).
+  version: v1
+
+servers:
+  - url: /data_source
+
+paths:
+  /file_upload:
+    post:
+      summary: Upload a file
+      description: Receives a file from the frontend into the backend in the proper serialized format.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Successfully uploaded file.
+        '400':
+          description: |
+            Error uploading data. Possible reasons:
+            - Data exceeds size (128mb).
+            - Only supports csv, xlsx, parquet, and gzip compressed csv files.
+        '413':
+          description: Payload Too Large (File exceeds 128mb).
+
+  /data_sources:
+    get:
+      summary: Provide available data sources
+      description: Returns the list of available data sources.
+      responses:
+        '200':
+          description: Successfully retrieved data sources.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceList'
+        '500':
+          description: Error retrieving data sources.
+
+  /connection_params:
+    post:
+      summary: Provide connection parameters
+      description: Receives the connection parameters from the user into the backend.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionParams'
+      responses:
+        '200':
+          description: Successfully connected to data source.
+        '400':
+          description: |
+            Bad request. Possible reasons:
+            - Missing or incorrect parameters.
+        '500':
+          description: Error connecting to data source.
+
+components:
+  schemas:
+    DataSources:
+      type: object
+      properties:
+        data_source:
+          type: string
+          description: The name of the data source to connect to.
+      required:
+        - data_source
+
+    SourceList:
+      type: object
+      properties:
+        sources:
+          type: array
+          items:
+            type: string
+            description: The list of available data sources.
+      example:
+        sources: ["aws_s3", "gcp_cloud_storage", "mysql", "aws_redshift", "gcp_big_query", "azure_data_factory"]
+
+    ConnectionParams:
+      type: object
+      properties:
+        host:
+          type: string
+          description: The host address or domain name for the data source connection.
+        database:
+          type: string
+          description: The name of the database.
+        username:
+          type: string
+          description: The username for accessing the database.
+        password:
+          type: string
+          description: The password for accessing the database.
+      required:
+        - host
+        - database
+        - username
+        - password

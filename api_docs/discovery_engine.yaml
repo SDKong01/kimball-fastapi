@@ -1,0 +1,304 @@
+openapi: 3.0.0
+info:
+  title: Discovery Engine API
+  description: >
+    API to configure data discovery. Configurations include connecting to a service, selecting a database, schema, and table, 
+    setting a discovery engine name, and providing output parameters.
+  version: v1
+
+servers:
+  - url: /discovery_engine
+
+paths:
+  /engine_params:
+    post:
+      summary: Configure the discovery engine
+      description: Receives the engine configuration parameters from the user into the backend.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/EngineParamsDB'
+                - $ref: '#/components/schemas/EngineParamsCSV'
+      responses:
+        '200':
+          description: Successfully received discovery engine configuration parameters.
+        '400':
+          description: |
+            Bad request. Possible reasons:
+            - The provided schema does not exist.
+            - The provided table does not exist.
+            - The provided sheet name does not exist.
+        '500':
+          description: Internal server error.
+
+  /catalog_table_schema:
+    get:
+      summary: Retrieve the catalog table schema
+      description: Returns values to create a table in the frontend representative of the processed data schema.
+      responses:
+        '200':
+          description: Successfully retrieved data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogTableSchema'
+        '500':
+          description: Error retrieving the data.
+
+  /data_characteristics:
+    get:
+      summary: Retrieve data characteristics
+      description: Returns values to create a table in the frontend representative of the processed data characteristics.
+      responses:
+        '200':
+          description: Successfully retrieved data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataCharacteristics'
+        '500':
+          description: Error retrieving the data.
+
+  /modify_characteristics/options:
+    get:
+      summary: Retrieve modification options
+      description: Returns available options for modifying a column's data characteristics.
+      responses:
+        '200':
+          description: Successfully retrieved options.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModificationOptions'
+        '500':
+          description: Error retrieving the options.
+
+  /modify_characteristics:
+    post:
+      summary: Modify data characteristics
+      description: Receives the data provided by the user to modify a column's data characteristics.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyCharacteristicsRequest'
+      responses:
+        '200':
+          description: Successfully modified data characteristics.
+        '400':
+          description: Error in the submitted data.
+        '500':
+          description: Internal server error.
+
+components:
+  schemas:
+    EngineParamsBase:
+      type: object
+      properties:
+        engine_name:
+          type: string
+          description: The name of the discovery engine.
+        catalog:
+          type: string
+          description: The catalog where the data is stored.
+        catalog_table_name:
+          type: string
+          description: The name of the output table to be stored in the data catalog.
+        catalog_table_prefix:
+          type: string
+          description: The prefix for the output table to be stored in the data catalog.
+        sample_size:
+          type: integer
+          description: The size of the sample to be processed.
+      required:
+        - engine_name
+        - catalog
+        - catalog_table_name
+        - catalog_table_prefix
+
+    EngineParamsDB:
+      allOf:
+        - $ref: '#/components/schemas/EngineParamsBase'
+        - type: object
+          properties:
+            db_schema:
+              type: string
+              description: The database schema.
+            db_table:
+              type: string
+              description: The database table.
+            file_sheet_name:
+              type: string
+              description: The name of the file sheet (optional).
+              nullable: true
+
+    EngineParamsCSV:
+      allOf:
+        - $ref: '#/components/schemas/EngineParamsBase'
+        - type: object
+          properties:
+            file_sheet_name:
+              type: string
+              description: The name of the file sheet.
+            db_schema:
+              type: string
+              description: The database schema (optional).
+              nullable: true
+            db_table:
+              type: string
+              description: The database table (optional).
+              nullable: true
+
+    CatalogTableSchema:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+          description: List of column names representing the processed data schema.
+        data_types:
+          type: array
+          items:
+            type: string
+          description: List of data types corresponding to each column.
+      example:
+        columns: ["id", "name", "date_created"]
+        data_types: ["integer", "string", "date"]
+
+    DataCharacteristics:
+      type: object
+      properties:
+        text_data:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              text_type:
+                type: string
+        time_data:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              granularity:
+                type: string
+              format:
+                type: string
+              range:
+                type: string
+        numerical_data:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              type:
+                type: string
+        currency:
+          type: string
+      example:
+        text_data:
+          store:
+            text_type: "Numerical ID"
+          Unemployment:
+            text_type: "Text"
+        time_data:
+          date:
+            granularity: "weekly"
+            format: "dd/mm/yyyy"
+            range: "01/01/2024 - 08/30/2024"
+        numerical_data:
+          weekly_sales:
+            type: "Revenue"
+          temperature:
+            type: "Measurement"
+          fuel_price:
+            type: "Price"
+          cpi:
+            type: "Quantity"
+        currency: "USD"
+
+    ModificationOptions:
+      type: object
+      properties:
+        column_name:
+          type: array
+          items:
+            type: string
+        data_type:
+          type: array
+          items:
+            type: string
+            enum: ["text", "date", "integer", "float", "bool"]
+        text_characteristics:
+          type: object
+          properties:
+            type:
+              type: array
+              items:
+                type: string
+                enum: ["numerical ID", "alphanumerical ID", "text"]
+        time_characteristics:
+          type: object
+          properties:
+            granularity:
+              type: array
+              items:
+                type: string
+                enum: ["daily", "weekly", "monthly", "yearly"]
+            format:
+              type: array
+              items:
+                type: string
+                enum: ["dd/mm/yyyy", "mm/dd/yyyy", "yyyy-mm-dd"]
+            range:
+              type: string
+        numerical_characteristics:
+          type: object
+          properties:
+            type:
+              type: array
+              items:
+                type: string
+                enum: ["quantity", "revenue", "price", "rate", "percentage"]
+
+    ModifyCharacteristicsRequest:
+      type: object
+      properties:
+        column_name:
+          type: string
+        data_type:
+          type: string
+          enum: ["text", "date", "integer", "float", "bool"]
+        text_characteristics:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: ["numerical ID", "alphanumerical ID", "text"]
+        time_characteristics:
+          type: object
+          properties:
+            granularity:
+              type: string
+              enum: ["daily", "weekly", "monthly", "yearly"]
+            format:
+              type: string
+              enum: ["dd/mm/yyyy", "mm/dd/yyyy", "yyyy-mm-dd"]
+            range:
+              type: string
+        numerical_characteristics:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: ["quantity", "revenue", "price", "rate", "percentage"]
+      example:
+        column_name: "Unemployment"
+        data_type: "float"
+        numerical_characteristics:
+          type: "percentage"
