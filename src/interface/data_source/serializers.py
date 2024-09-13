@@ -1,4 +1,4 @@
-from typing import List, Any, Union, Dict
+from typing import List, Any, Union, Dict, Optional
 from pydantic import BaseModel
 from fastapi import File, UploadFile
 from src.interface.mixins import BaseResponseMixin
@@ -9,8 +9,10 @@ class DataSourcerSerializer(BaseModel):
 
 
 class ConnectionParams(BaseModel):
+    engine: str
+    port: str
     host: str
-    database: str
+    database: Optional[str]
     username: str
     password: str
 

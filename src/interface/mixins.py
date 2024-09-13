@@ -13,7 +13,7 @@ class PaginationSerializer(BaseResponseMixin):
 
 
 class ErrorMessageSerializer(BaseModel):
-    message: str
+    detail: str
     item: str
 
 

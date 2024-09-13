@@ -3,16 +3,73 @@ import csv
 import json
 import zipfile
 import pandas as pd
-from typing import List
+from typing import List, Optional
 from tempfile import SpooledTemporaryFile, TemporaryFile
 from starlette.datastructures import UploadFile
-
-from src.domain.data_source.exceptions import InvalidFormatException
+from dataclasses import dataclass
+from dataclass_type_validator import dataclass_validate
+from src.domain.data_source.exceptions import (
+    InvalidFormatException,
+    DBEngineNotSupported,
+)
 from src.domain.data_source.services import DataSourceServices
+from src.constants import MONGO, POSTGRES, DB_ENGINES
+
+
+class DataSourceDBServices:
+    pass
+
+
+@dataclass_validate
+@dataclass(frozen=True)
+class DBParamsDTO:
+    engine: str
+    database: Optional[str]
+    username: Optional[str]
+    password: Optional[str]
+    host: str
+    port: str
+
+    def __post_init__(self):
+        self.validate_engine()
+
+    def validate_engine(self):
+        if self.engine not in DB_ENGINES:
+            raise DBEngineNotSupported(
+                item="engine", detail=f"Invalid engine, {self.engine} not supported"
+            )
 
 
 class DataSourceAppServices:
+    ### -------------------- DB Connection --------------------
 
+    def connect_db(self, credentials: DBParamsDTO) -> str:
+        connector = self._get_db_connector(credentials.engine)
+        conn_id = connector(credentials)
+        return conn_id
+
+    def _get_db_connector(self, engine: str) -> callable:
+        connectors = {
+            MONGO: self.mongo_connect,
+            POSTGRES: self.pg_connect,
+        }
+        return connectors[engine]
+
+    def mongo_connect(self, credentials: DBParamsDTO) -> str:
+        if credentials.username and credentials.password:
+            conn_string = f"mongodb://{credentials.username}:{credentials.password}@{credentials.host}:{credentials.port}"
+        else:
+            conn_string = f"mongodb://{credentials.host}:{credentials.port}"
+
+        conn_id = DataSourceServices.mongo_connect(conn_string)
+        return conn_id
+
+    def pg_connect(self, credentials: DBParamsDTO) -> str:
+        conn_string = f"dbname={credentials.database} user={credentials.username} password={credentials.password} host={credentials.host} port={credentials.port}"
+        conn_id = DataSourceServices.pg_connect(conn_string)
+        return conn_id
+
+    ### -------------------- File Upload --------------------
     def _file_format(self, file_name: str) -> str:
         valid_extensions = ["csv", "json", "xls", "xlsx", "zip"]
         extension = file_name.split(".")[-1]
