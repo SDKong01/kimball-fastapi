@@ -1,0 +1,1 @@
+'''Unit tests for bson_abstract_factory module.'''

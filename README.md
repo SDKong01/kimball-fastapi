@@ -64,6 +64,24 @@ This is the FastAPI API Layer for the Kimball application modularized with PyNes
 
 Go to the fastapi docs and use your api endpoints - http://127.0.0.1/docs
 
+## Development guidelines
+
+### Tests
+
+- Every module must include unit tests
+- Tests should consider success and failure scenarios
+- During the first development phase, code coverage should be at least of 80% per module, it should eventually be expanded to 100%
+
+### Architecture
+
+- Apps should be isolated
+  - Each layer can only include direct calls to functions in lower layers (Interface > Application > Domain > Infrastructure)
+  - The application layer is the main point of integration of domain APIs
+  - Interactions should be modelled as API/function calls.
+  - Avoid direct calls from one domain module to another.
+  - When modules depend on each other directly use dependency inversion.
+
+
 ## License
 
 This project is licensed under the [Proprietary Software](LICENSE).
