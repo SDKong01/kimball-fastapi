@@ -19,3 +19,9 @@ class ErrorMessageSerializer(BaseModel):
 
 class ErrorResponseSerializer(BaseResponseMixin):
     error: ErrorMessageSerializer
+
+
+class BaseModelFactory:
+
+    def __new__(cls, **kwargs):
+        return BaseModel(**kwargs)

@@ -9,3 +9,4 @@ DB_ENGINES = [MONGO, POSTGRES]
 # --------------------------------------------------------
 
 ENGINES_COLLECTION = "engines"
+TEMP_USER_ID = "temp_user_id"

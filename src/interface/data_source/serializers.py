@@ -8,15 +8,6 @@ class DataSourcerSerializer(BaseModel):
     sources: List[str]
 
 
-class ConnectionParams(BaseModel):
-    engine: str
-    port: str
-    host: str
-    database: Optional[str]
-    username: str
-    password: str
-
-
 class FileResumeSerializer(BaseModel):
     file_name: str
     created: int
@@ -28,3 +19,10 @@ class CreatedSerializer(BaseModel):
 
 class UploadFileResponseSerializer(BaseResponseMixin):
     data: CreatedSerializer
+
+
+class CloneDataSerializer(BaseModel):
+    engine: str
+    conn_id: str
+    collection: Optional[str] = None
+    db: Optional[str] = None

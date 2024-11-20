@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from typing import Optional, Dict, Any, List
 from pydantic import BaseSettings, validator
 from src.infrastructure.mongo_manager.mongo_db_connection import MongoDBConnection
+from src.domain.connection.models import DBManager, ConnParams
 
 load_dotenv()
 
@@ -16,7 +17,7 @@ class AppSetting(BaseSettings):
     DESCRIPTION: str = 'Kimball backend endpoints'
 
     # Mongo settings
-    MONGO_HOST: str = getenv('MONGO_HOST', 'localhost')
+    MONGO_HOST: str = getenv('MONGO_HOST', 'localhost:27017')
     MONGO_PORT: int = getenv('MONGO_PORT', 27017)
     MONGO_DB: str = getenv('MONGO_DB', 'kimball')
     MONGO_USER: str = getenv('MONGO_USER', '')
@@ -43,11 +44,22 @@ class AppSetting(BaseSettings):
     def mongo_client(self) -> MongoDBConnection:
         connection_string = "mongodb://"
         if self.MONGO_USER and self.MONGO_PASS:
-            connection_string = f"mongodb://{self.MONGO_USER}:{self.MONGO_PASS}@{self.MONGO_HOST}:{self.MONGO_PORT}"
+            connection_string = f"mongodb+srv://{self.MONGO_USER}:{self.MONGO_PASS}@{self.MONGO_HOST}:{self.MONGO_PORT}"
         else:
-            connection_string = f"mongodb://{self.MONGO_HOST}:{self.MONGO_PORT}"
+            connection_string = f"mongodb+srv://{self.MONGO_HOST}:{self.MONGO_PORT}"
 
         return MongoDBConnection(connection_string=connection_string)
+
+    db_client: DBManager = None
+    db_client_params: ConnParams = None
+
+    # @property
+    # def db_client(self) -> DBManager:
+    #     return None
+
+    # @self_db_client.setter
+    # def self_db_client(self, db_manager: DBManager):
+    #     self.self_db_client = db_manager
 
 
 settings = AppSetting()
