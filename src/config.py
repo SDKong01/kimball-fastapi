@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from typing import Optional, Dict, Any, List
 from pydantic import BaseSettings, validator
 from src.infrastructure.mongo_manager.mongo_db_connection import MongoDBConnection
-from src.domain.connection.models import DBManager, ConnParams
+
 
 load_dotenv()
 
@@ -22,6 +22,12 @@ class AppSetting(BaseSettings):
     MONGO_DB: str = getenv('MONGO_DB', 'kimball')
     MONGO_USER: str = getenv('MONGO_USER', '')
     MONGO_PASS: str = getenv('MONGO_PASS', '')
+
+    # Redis settings
+    REDIS_HOST: str = getenv('REDIS_HOST', 'localhost')
+    REDIS_PORT: int = getenv('REDIS_PORT', 6379)
+    REDIS_PASS: str = getenv('REDIS_PASS', '')
+    REDIS_DB: int = getenv('REDIS_DB', 0)
 
     ALLOWED_ORIGINS: Any = getenv('ALLOWED_ORIGINS')
 
@@ -50,16 +56,15 @@ class AppSetting(BaseSettings):
 
         return MongoDBConnection(connection_string=connection_string)
 
-    db_client: DBManager = None
-    db_client_params: ConnParams = None
+    shared_instances: Dict[str, Any] = {}
 
-    # @property
-    # def db_client(self) -> DBManager:
-    #     return None
+    db_client_connector: Any = None
+    db_client_params: Any = None
 
-    # @self_db_client.setter
-    # def self_db_client(self, db_manager: DBManager):
-    #     self.self_db_client = db_manager
+    cache_client_connector: Any = None
+    cache_client_params: Any = None
+
+    testing_client: str = getenv('TESTING_CLIENT', 'test_client')
 
 
 settings = AppSetting()

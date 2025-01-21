@@ -1,6 +1,7 @@
 import io
 import csv
 import json
+import string
 import zipfile
 import pandas as pd
 from typing import List, Optional, Dict, Union, Any, Tuple
@@ -12,14 +13,17 @@ from src.domain.data_source.exceptions import (
     InvalidFormatException,
     DBEngineNotSupported,
 )
-from src.domain.data_source.queryset import QuerySet
+
+# from src.domain.connection.queryset import QuerySet
 from src.config import settings
 from openpyxl import load_workbook, Workbook
+from src.domain.dataset.services import DatasetServices
 
 
 class FileServices:
     def __init__(self):
-        self.our_db = QuerySet(db_manager=settings.db_client)
+        self.our = None
+        # self.our_db = QuerySet(db_manager=settings.db_client)
 
     ### -------------------- File Upload --------------------
     def _file_format(self, file_name: str) -> str:
@@ -49,15 +53,32 @@ class FileServices:
         letters = ''.join([char for char in s if char.isalpha()])
         return (numbers, letters)
 
+    def _excel_columns(self) -> List[str]:
+        columns = []
+        for letter in string.ascii_uppercase:
+            columns.append(letter)
+        for first_letter in string.ascii_uppercase:
+            for second_letter in string.ascii_uppercase:
+                columns.append(first_letter + second_letter)
+        return columns
+
     def process_xlsx(self, file: SpooledTemporaryFile) -> List[dict]:
         workbook = load_workbook(file)
         sheet = workbook.active
         data = []
+        # last_row = sheet.max_row
+        # last_column = sheet.max_column
+
         for row in sheet.iter_rows():
             for cell in row:
                 x, y = self.split_numbers_and_letters(cell.coordinate)
                 data.append(
-                    {"x": x, "y": y, "value": cell.value, "cell": cell.coordinate}
+                    {
+                        "x": int(x),
+                        "y": self._excel_columns().index(y),
+                        "value": cell.value,
+                        "id": cell.coordinate,
+                    }
                 )
                 # print(f"Celda: {cell.coordinate}, Valor: {cell.value}")
                 # break
@@ -99,15 +120,17 @@ class FileServices:
         parser = self._get_file_parser(file_format)
         data_parsed = parser(file.file)
         file_name = self._file_name(file.filename)
-        self.clone_to_self_db(collection_dest=file_name, db_dest=db, data=data_parsed)
+        data_services = DatasetServices()
+        data_services.create_only_data(data=data_parsed, collection_name=file_name)
+        # self.clone_to_self_db(collection_dest=file_name, db_dest=db, data=data_parsed)
         return len(data_parsed)
 
-    def clone_to_self_db(
-        self,
-        collection_dest: str,
-        db_dest: str,
-        data: Union[Dict[str, Any], Dict[str, Any], None] = None,
-    ):
-        self.our_db.db_manager.collection = collection_dest
-        self.our_db.db_manager.db = db_dest
-        self.our_db.insert_many(data)
+    # def clone_to_self_db(
+    #     self,
+    #     collection_dest: str,
+    #     db_dest: str,
+    #     data: Union[Dict[str, Any], Dict[str, Any], None] = None,
+    # ):
+    #     self.our_db.db_manager.collection = collection_dest
+    #     self.our_db.db_manager.db = db_dest
+    #     self.our_db.insert_many(data)

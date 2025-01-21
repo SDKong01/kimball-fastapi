@@ -38,33 +38,33 @@ class DataSourceController:
         )
         return response
 
-    @Post(
-        "/clone",
-        summary="Clone a collection",
-        description="Clone a collection from one database to another.",
-        operation_id="clone_collection",
-        status_code=status.HTTP_201_CREATED,
-    )
-    async def clone(self, params: CloneDataSerializer):
-        try:
-            response = self.service.clone(
-                params=CloneParamsDTO(**params.dict()), db=TEMP_USER_ID
-            )
-            response = UploadFileResponseSerializer(
-                success=True, data={"created": response}
-            )
-            return response
-        except DBEngineNotSupported as e:
-            response = ErrorResponseSerializer(
-                success=False, error={"item": e.item, "message": e.detail}
-            )
-            raise HTTPException(
-                status_code=status.HTTP_418_IM_A_TEAPOT, detail=response.dict()
-            )
-        except TypeValidationError as e:
-            response = ErrorResponseSerializer(
-                success=False, error={"item": "db-connection", "message": str(e)}
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
-            )
+    # @Post(
+    #     "/clone",
+    #     summary="Clone a collection",
+    #     description="Clone a collection from one database to another.",
+    #     operation_id="clone_collection",
+    #     status_code=status.HTTP_201_CREATED,
+    # )
+    # async def clone(self, params: CloneDataSerializer):
+    #     try:
+    #         response = self.service.clone(
+    #             params=CloneParamsDTO(**params.dict()), db=TEMP_USER_ID
+    #         )
+    #         response = UploadFileResponseSerializer(
+    #             success=True, data={"created": response}
+    #         )
+    #         return response
+    #     except DBEngineNotSupported as e:
+    #         response = ErrorResponseSerializer(
+    #             success=False, error={"item": e.item, "message": e.detail}
+    #         )
+    #         raise HTTPException(
+    #             status_code=status.HTTP_418_IM_A_TEAPOT, detail=response.dict()
+    #         )
+    #     except TypeValidationError as e:
+    #         response = ErrorResponseSerializer(
+    #             success=False, error={"item": "db-connection", "message": str(e)}
+    #         )
+    #         raise HTTPException(
+    #             status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
+    #         )

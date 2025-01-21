@@ -116,3 +116,14 @@ class DiscoveryEngineController:
         conn_params = ConnectionDTO(**conn_params.dict())
         response = self.service.create_engine(engine_params, conn_params=conn_params)
         return response
+
+    @Get(
+        "/matrix_exploration",
+        summary="Matrix Exploration",
+        description="Matrix Exploration",
+        operation_id="matrixExploration",
+        status_code=status.HTTP_200_OK,
+    )
+    async def matrix_exploration(self, db: str, coll: str):
+        response = self.service.matrix_exploration(db, coll)
+        return response

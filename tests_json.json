@@ -1,0 +1,10 @@
+{
+    "engine": "postgres",
+    "params": {
+      "password": "xCf4nRcFy5fvYOH",
+      "port": "5432",
+      "user": "postgres",
+      "database": "kimballDB",
+      "host": "localhost"
+    }
+  }

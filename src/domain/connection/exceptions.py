@@ -11,3 +11,7 @@ class MethodNotAvailable(BaseExceptionMixin):
 
 class ArgumentError(BaseExceptionMixin):
     pass
+
+
+class ConnectionMissing(BaseExceptionMixin):
+    pass

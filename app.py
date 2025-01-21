@@ -7,50 +7,77 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.infrastructure.mongo_manager.mongo_db_connection import MongoDBConnection
+
 from src.interface.data_source.module import DataSourceModule
+
 from src.interface.discovery_engine.module import DiscoveryEngineModule
 from src.interface.connection.module import ConnectionModule
-from src.domain.connection.mongo.client import MongoManager, MongoClientConn
+from src.interface.queryset.module import QuerySetModule
+from src.interface.dataset.module import DatasetModule
+
+from src.domain.connection.models import ConnParams
+
+from src.domain.connection.services import ConnServices
 from src.config import settings
-from src.domain.connection.models import (
-    ConnClient,
-    ConnParams,
-    SingleConnFactory,
-    DBManager,
-)
 
 
 @asynccontextmanager
 async def lifespan(app: App):
-    # Connect to app MongoDB
-    id = MongoClientConn.stablis_new_conn(
-        host=settings.MONGO_HOST,
-        username=settings.MONGO_USER,
-        password=settings.MONGO_PASS,
-    )
-    params = ConnParams(
-        id=id,
+    # Stablis connection to app db
+    db_params = ConnParams(
         engine="mongodb",
         params={
             "host": settings.MONGO_HOST,
             "username": settings.MONGO_USER,
             "password": settings.MONGO_PASS,
+            "port": settings.MONGO_PORT,
+            # "database": settings.MONGO_DB,
         },
     )
-    db = MongoManager(conn_params=params)
-    db.conn()
-    settings.db_client = db
-    settings.db_client_params = params
-    # print("Connected to self db")
-    # setattr(settings, "db_client", db.conn())
-    # settings.slf_db_client = db.conn()
+    connector = ConnServices.open_persistant_connection(db_params)
+    settings.db_client_connector = connector
+    settings.db_client_params = ConnParams(
+        id=connector.id, engine=db_params.engine, params=db_params.params
+    )
+
+    # Stablis connection to cache db
+    print(
+        {
+            "host": settings.REDIS_HOST,
+            "port": settings.REDIS_PORT,
+            "password": settings.REDIS_PASS,
+            "database": settings.REDIS_DB,
+        }
+    )
+    cache_params = ConnParams(
+        engine="redis",
+        params={
+            "host": settings.REDIS_HOST,
+            "port": settings.REDIS_PORT,
+            "password": settings.REDIS_PASS,
+            "db": settings.REDIS_DB,
+        },
+    )
+    print("cache params", cache_params)
+    cache_connector = ConnServices.open_persistant_connection(cache_params)
+    settings.cache_client_connector = cache_connector
+    settings.cache_client_params = ConnParams(
+        id=cache_connector.id, engine=cache_params.engine, params=cache_params.params
+    )
     yield
-    del db
+    # connector.close()
+    # cache_connector.close()
 
 
 app = App(
     **settings.fastapi_settings,
-    modules=[DataSourceModule, DiscoveryEngineModule, ConnectionModule],
+    modules=[
+        DataSourceModule,
+        DiscoveryEngineModule,
+        ConnectionModule,
+        QuerySetModule,
+        DatasetModule,
+    ],
     lifespan=lifespan
 )
 

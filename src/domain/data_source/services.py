@@ -8,7 +8,9 @@ from src.infrastructure.mongo_manager.bson_abstract_factory import AbstractBSONF
 from src.infrastructure.pg_manager.pg_connection import PostgresConnection
 from src.config import settings
 from src.domain.data_source.file_handler.services import FileServices
-from src.domain.data_source.mongo.services import MongoServices
+from src.domain.data_source.db_handler.services import DBHandlerServices
+
+# from src.domain.data_source.mongo.services import MongoServices
 from src.constants import MONGO
 
 
@@ -22,8 +24,15 @@ class DataSourceServices:
         return FileServices()
 
     @staticmethod
-    def mongo_services() -> MongoServices:
-        return MongoServices
+    def db_services(engine: str) -> Any:
+        connections = {
+            MONGO: MongoDBConnection,
+        }
+        return connections.get(engine)
+
+    # @staticmethod
+    # def mongo_services() -> MongoServices:
+    #     return MongoServices
 
     # @staticmethod
     # def get_connector_by_engine(engine: str) -> Any:

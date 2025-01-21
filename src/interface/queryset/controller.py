@@ -1,0 +1,101 @@
+from nest.core import Controller, Depends, Get, Post, Patch, Delete
+from fastapi import UploadFile, File, status, Response, HTTPException
+from fastapi.responses import JSONResponse
+from src.application.queryset.services import QuerySetAppServices
+from src.interface.queryset.serializers import (
+    QueryCreateSerializer,
+    QueryResponseSerializer,
+    ConnParamsIDSerializer,
+)
+from src.domain.queryset.models import Query
+from src.domain.connection.models import ConnParams
+
+
+@Controller(tag="QuerySet", prefix="v1/queryset")
+class QuerySetController:
+    service: QuerySetAppServices = Depends(QuerySetAppServices)
+
+    @Get(
+        "/",
+        summary="Retrieve queryset",
+        description="Retrieve queryset.",
+        operation_id="retrieve_queryset",
+    )
+    async def retrieve(self):
+        return self.service.retrieve()
+
+    @Post(
+        "/",
+        summary="Create queryset",
+        description="Create queryset.",
+        operation_id="create_queryset",
+    )
+    async def create(self, query: QueryCreateSerializer):
+        _query = Query(
+            filters=[],
+            db=query.db,
+            collection=query.collection,
+            table=query.table,
+            schema=query.db_schema,
+        )
+        response = self.service.create(query=_query, is_cached=query.is_cached)
+        response = QueryResponseSerializer(**response.__dict__)
+        return JSONResponse(content={"success": True, "result": response.dict()})
+
+    @Patch(
+        "/",
+        summary="Update queryset",
+        description="Update queryset.",
+        operation_id="update_queryset",
+    )
+    async def update(self, params: QueryCreateSerializer):
+        params_dict = params.dict()
+        params_dict["schema"] = params_dict.pop("db_schema")
+        params_dict.pop("is_cached")
+        query = Query(**params_dict)
+        if query.id:
+            response = self.service.update(query=query)
+        else:
+            response = self.service.create(query=query, is_cached=params.is_cached)
+
+        response_dict = response.__dict__
+        response_dict["db_schema"] = response_dict.pop("schema")
+        response = QueryResponseSerializer(**response.__dict__)
+        return JSONResponse(content={"success": True, "result": response.dict()})
+
+    @Get(
+        "/run",
+        summary="Run queryset",
+        description="Run queryset.",
+        operation_id="run_queryset",
+    )
+    async def run_queryset(self, conn_id: str, query_id: str):
+        conn_params = ConnParams(id=conn_id)
+        query = Query(id=query_id)
+        response = self.service.run_query(
+            conn_params=conn_params, query=query, is_cached=False
+        )
+
+        def remove_bytes_and_lob(obj):
+            if isinstance(obj, dict):
+                return {k: remove_bytes_and_lob(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [remove_bytes_and_lob(i) for i in obj]
+            elif isinstance(obj, bytes):
+                return str(obj.decode('utf-8'))
+            elif hasattr(obj, 'read') and not isinstance(
+                obj, str
+            ):  # Check if it's a LOB object
+                response = obj.read()
+                response = (
+                    response.decode('utf-8')
+                    if isinstance(response, bytes)
+                    else response
+                )
+                return response
+            else:
+                return obj
+
+        response = remove_bytes_and_lob(response)
+        print(response)
+        return JSONResponse(content={"success": True, "result": response})

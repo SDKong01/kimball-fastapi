@@ -5,6 +5,12 @@ from src.domain.discovery_engine.models import PGDiscovery
 from src.infrastructure.pg_manager.pg_connection import PostgresConnection
 from src.domain.discovery_engine.models import EngineRepo, EngineFactory, EngineDTO
 from src.domain.discovery_engine.services import DiscoveryEngineServices
+from src.domain.discovery_engine.data_transformations.matrix_explorer import (
+    MatrixExplorerTransformations,
+)
+from src.domain.connection.services import ConnServices
+from src.config import settings
+from src.domain.dataset.services import DatasetServices
 
 
 @dataclass_validate
@@ -21,6 +27,23 @@ class ConnectionDTO:
 class DiscoveryEngineAppServices:
     def __init__(self) -> None:
         pass
+
+    def matrix_exploration(self, db: str, coll: str):
+        data_services = DatasetServices()
+        data = data_services.retrieve_as_json(db)[:]
+        matrix_explorer = MatrixExplorerTransformations(data)
+        response = matrix_explorer.process_matrix()
+        # print("response", response)
+        return response
+        # pass
+        # our_manager = ConnServices.get_factory().get_db_manager(
+        #     settings.db_client_params
+        # )
+        # queryset = QuerySet(db_manager=our_manager)
+        # queryset.db_manager.collection = coll
+        # queryset.db_manager.db = db
+        # data = queryset.filter({})
+        # data = list(data)[:]
 
     def get_schemas(self, conn_params: ConnectionDTO) -> list:
         db_conn = PostgresConnection(connection_id=conn_params.conn_id)

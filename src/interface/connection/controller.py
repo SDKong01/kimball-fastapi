@@ -9,20 +9,70 @@ from src.interface.data_source.serializers import (
 )
 from src.interface.connection.serializers import (
     ConnectionParams,
-    ConnIdParams,
-    DBRequiredParams,
 )
-from src.application.data_source.services import DataSourceAppServices
-from src.application.connection.services import ConnectionAppServices
+from src.application.connection.services import (
+    ConnectionAppServices,
+)
 from src.interface.mixins import ErrorResponseSerializer
 from src.constants import MONGO, DB_ENGINES
 from src.domain.data_source.exceptions import DBEngineNotSupported
-from src.domain.connection.models import ConnParams, StablisConnParams
+from src.domain.connection.models import ConnParams
 
 
 @Controller(tag="Connection", prefix="v1/connection")
 class ConnectionController:
     service: ConnectionAppServices = Depends(ConnectionAppServices)
+
+    @Get(
+        "/engines",
+        summary="Get available engines",
+        description="Returns the available engines for the connection.",
+        operation_id="connection_available_engines",
+        status_code=status.HTTP_200_OK,
+        responses={
+            200: {"success": True, "data": {"engines": ["db1", "db2"]}},
+        },
+    )
+    async def available_engines(self):
+        return JSONResponse(content={"success": True, "data": DB_ENGINES})
+
+    @Get(
+        "/schema/{engine}",
+        summary="Connection parameters schema",
+        description="Returns the schema for the connection parameters.",
+        operation_id="connection_params_schema",
+        status_code=status.HTTP_200_OK,
+    )
+    async def connection_params_schema(self, engine: str):
+        if engine not in DB_ENGINES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "success": False,
+                    "error": {"item": "engine", "detail": "Invalid engine"},
+                },
+            )
+        response = self.service.get_params_schema(engine)
+        return JSONResponse(content={"success": True, "data": response})
+
+    @Get(
+        "/query-schema/{engine}",
+        summary="Connection query parameters schema",
+        description="Return the schema with the required fields to run a query.",
+        operation_id="connection_query_schema",
+        status_code=status.HTTP_200_OK,
+    )
+    async def connection_query_schema(self, engine: str):
+        if engine not in DB_ENGINES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "success": False,
+                    "error": {"item": "engine", "detail": "Invalid engine"},
+                },
+            )
+        response = self.service.get_query_schema(engine)
+        return JSONResponse(content={"success": True, "data": response})
 
     @Post(
         "/connect",
@@ -43,10 +93,11 @@ class ConnectionController:
     )
     async def connection(self, params: ConnectionParams):
         try:
-            params = StablisConnParams(**params.dict())
-            response = self.service.connect_db(params)
+            dict_params = params.params.dict()
+            _params = ConnParams(engine=params.engine, params=dict_params)
+            response = self.service.connect_db(_params)
             return JSONResponse(
-                content={"success": True, "data": {"created": response}}
+                content={"success": True, "data": {"connection_id": response}}
             )
         except DBEngineNotSupported as e:
             response = ErrorResponseSerializer(
@@ -70,13 +121,11 @@ class ConnectionController:
         operation_id="list_databases",
         status_code=status.HTTP_200_OK,
     )
-    async def list_databases(self, id: str, engine: str):
-        params = ConnParams(
-            id=id,
-            engine=engine,
-            params=None,
+    async def list_databases(self, connection_id: str):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(
+            conn_params=params, _schema="databases"
         )
-        response = self.service.list_databases(params)
         return JSONResponse(content={"success": True, "data": {"databases": response}})
 
     @Get(
@@ -86,9 +135,77 @@ class ConnectionController:
         operation_id="list_collections",
         status_code=status.HTTP_200_OK,
     )
-    async def list_collections(self, id: str, engine, db: str):
-        conn_params = ConnParams(id=id, engine=engine, params=None)
-        response = self.service.list_collections(conn_params=conn_params, db=db)
+    async def list_collections(self, connection_id: str, db: str):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(
+            conn_params=params, _schema="collections", db=db
+        )
         return JSONResponse(
             content={"success": True, "data": {"collections": response}}
         )
+
+    @Get(
+        "/tables",
+        summary="List tables",
+        description="List all the tables available in the database.",
+        operation_id="list_tables",
+        status_code=status.HTTP_200_OK,
+    )
+    async def list_table(self, connection_id: str, schema: str = None):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(
+            conn_params=params, _schema="tables", schema=schema
+        )
+        return JSONResponse(content={"success": True, "data": response})
+
+    @Get(
+        "/suggest_tables",
+        summary="Suggest tables",
+        description="Suggest tables available in the database.",
+        operation_id="suggest_tables",
+        status_code=status.HTTP_200_OK,
+    )
+    async def suggest_tables(self, connection_id: str):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(
+            conn_params=params, _schema="suggested_tables"
+        )
+        return JSONResponse(content={"success": True, "data": response})
+
+    @Get(
+        "/schemas",
+        summary="List schemas",
+        description="List all the schemas available in the database.",
+        operation_id="list_schemas",
+        status_code=status.HTTP_200_OK,
+    )
+    async def list_schemas(self, connection_id: str):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(conn_params=params, _schema="schemas")
+        return JSONResponse(content={"success": True, "data": response})
+
+    @Get(
+        "/views",
+        summary="List views",
+        description="List all the views available in the database.",
+        operation_id="list_views",
+        status_code=status.HTTP_200_OK,
+    )
+    async def list_views(self, connection_id: str):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(conn_params=params, _schema="views")
+        return JSONResponse(content={"success": True, "data": response})
+
+    @Get(
+        "/suggest_views",
+        summary="Suggest views",
+        description="Suggest views available in the database.",
+        operation_id="suggest_views",
+        status_code=status.HTTP_200_OK,
+    )
+    async def suggest_views(self, connection_id: str):
+        params = ConnParams(id=connection_id)
+        response = self.service.list_base_schemas(
+            conn_params=params, _schema="suggested_views"
+        )
+        return JSONResponse(content={"success": True, "data": response})

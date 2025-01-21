@@ -1,33 +1,62 @@
-from src.domain.connection.services import ConnServices
-from typing import List, Optional
+from uuid import uuid4
+from typing import List, Optional, Dict
 from dataclasses import dataclass
 from dataclass_type_validator import dataclass_validate
+
 from src.domain.data_source.exceptions import (
     DBEngineNotSupported,
 )
-from src.constants import DB_ENGINES
 from src.domain.connection.services import ConnServices
-from src.domain.connection.models import ConnParams, StablisConnParams
+from src.domain.connection.models import ConnParams, ConnectionParams
+from src.config import settings
 
 
 class ConnectionAppServices:
     ### -------------------- DB Connection --------------------
+    def get_params_schema(self, engine: str) -> Dict[str, Dict[str, str]]:
+        schema = ConnServices.get_client(engine).params_schema
+        return schema
 
-    def connect_db(self, stablis_conn_params: StablisConnParams) -> str:
-        print("params in connect_db", stablis_conn_params)
-        # params.pop("engine")
-        conn_id = (
-            ConnServices()
-            .get_factory()
-            .stablish_connection(stablis_conn_params=stablis_conn_params)
+    def get_query_schema(self, engine: str) -> Dict[str, Dict[str, str]]:
+        schema = ConnServices.get_client(engine).query_schema
+        return schema
+
+    def connect_db(self, stablis_conn_params: ConnParams) -> str:
+        connector: ConnectionParams = ConnServices.open_persistant_connection(
+            stablis_conn_params
         )
-        return conn_id
+        return connector.id
 
-    def list_databases(self, conn_params: ConnParams) -> List[str]:
-        print("params in list_databases", conn_params)
-        conn = ConnServices().get_factory().get_existing_conn(conn_params=conn_params)
-        return conn.list_databases()
+    def list_base_schemas(
+        self, conn_params: ConnParams, _schema: str, **kwargs
+    ) -> List[str]:
+        db_manager = ConnServices.get_db_manager(conn_params=conn_params)
 
-    def list_collections(self, conn_params: ConnParams, db: str) -> List[str]:
-        conn = ConnServices().get_factory().get_existing_conn(conn_params=conn_params)
-        return conn.list_collections(db=db)
+        schemas = {
+            "databases": db_manager.list_databases,
+            "collections": db_manager.list_collections,
+            "tables": db_manager.list_tables,
+            "schemas": db_manager.list_schemas,
+            "suggested_tables": db_manager.list_suggested_tables,
+            "views": db_manager.list_views,
+            "suggested_views": db_manager.list_suggested_views,
+        }
+
+        if _schema not in schemas:
+            raise DBEngineNotSupported(
+                item="base-schema-search", detail=f"Schema {_schema} not supported"
+            )
+
+        return schemas[_schema](**kwargs)
+
+    def change_db(self, conn_params: ConnParams):
+        conector = ConnServices.get_existing_connector(conn_params=conn_params)
+        params = conector.connection_params
+
+        db = conn_params.params.get("db")
+        if not db:
+            raise ValueError("DB is required")
+        params = {**params}.update({"db": db})
+        conector.close()
+        connector = self.connect_db(ConnParams(params))
+        return connector
