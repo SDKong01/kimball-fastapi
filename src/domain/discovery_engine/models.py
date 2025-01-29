@@ -9,7 +9,10 @@ from typing import List, Optional, Any, Dict, Union
 from src.config import settings
 from src.constants import ENGINES_COLLECTION
 from src.infrastructure.mongo_manager.bson_abstract_factory import AbstractBSONFactory
-from src.domain.discovery_engine.exceptions import InvalidFormatException, MissingRequiredFieldsException
+from src.domain.discovery_engine.exceptions import (
+    InvalidFormatException,
+    MissingRequiredFieldsException,
+)
 
 
 class SQLDiscovery(ABC):
@@ -18,7 +21,7 @@ class SQLDiscovery(ABC):
 
     def fetchall(self, query, *args, **kwargs):
         result = []
-        
+
         with self.db_conn.cursor() as cursor:
             result = cursor.execute(query, *args)
             result = cursor.fetchall()
@@ -111,7 +114,9 @@ class EngineDTO:
 
     def validate_sample_size(self):
         if self.sample_size and self.sample_size < 1:
-            raise InvalidFormatException(item="engine", detail="Sample size must be greater than 0")
+            raise InvalidFormatException(
+                item="engine", detail="Sample size must be greater than 0"
+            )
 
     def validate_id(self):
         if not self.id:
@@ -146,11 +151,20 @@ class Engine:
 
     def is_valid(self, raise_exception=False) -> bool:
         # TODO: implement validation
-        mandatory_fields = ["id", "engine_name", "catalog", "output_table_name", "db_source", "data_storage_name"]
+        mandatory_fields = [
+            "id",
+            "engine_name",
+            "catalog",
+            "output_table_name",
+            "db_source",
+            "data_storage_name",
+        ]
         for field in mandatory_fields:
             if not getattr(self, field):
                 if raise_exception:
-                    raise MissingRequiredFieldsException(item="entity", detail=f"Missing required field: {field}")
+                    raise MissingRequiredFieldsException(
+                        item="entity", detail=f"Missing required field: {field}"
+                    )
                 return False
         return True
 
@@ -159,16 +173,16 @@ class Engine:
         repo = EngineRepo(collection=ENGINES_COLLECTION)
         repo.insert_one(data=self.__dict__)
 
-    def create_dataset(self, connection: SQLDiscovery):
-        # TODO: collection name must be unique and use the user_id as prefix
-        # TODO: implement celery task to run the query and store the data
-        repo_data = EngineRepo(collection=self.engine_name)
-        query = f"SELECT * FROM {self.db_source.get("schema")}.{self.db_source.get("table")}"
-        query = (
-            query + f" LIMIT {self.sample_size};" if self.sample_size else query + ";"
-        )
-        result = connection.fetchall(query)
-        repo_data.insert_many(data=result)
+    # def create_dataset(self, connection: SQLDiscovery):
+    #     # TODO: collection name must be unique and use the user_id as prefix
+    #     # TODO: implement celery task to run the query and store the data
+    #     repo_data = EngineRepo(collection=self.engine_name)
+    #     query = f"SELECT * FROM {self.db_source.get("schema")}.{self.db_source.get("table")}"
+    #     query = (
+    #         query + f" LIMIT {self.sample_size};" if self.sample_size else query + ";"
+    #     )
+    #     result = connection.fetchall(query)
+    #     repo_data.insert_many(data=result)
 
     def change_name(self, new_name: str) -> "Engine":
         # TODO: check if the name is unique
@@ -213,7 +227,7 @@ class EngineFactory:
             data_storage_name=engine_dto.data_storage_name,
             sample_size=engine_dto.sample_size,
         )
-    
+
     @staticmethod
     def build_entity_with_id(engine_dto: EngineDTO) -> Engine:
         if isinstance(db_source, dict):
