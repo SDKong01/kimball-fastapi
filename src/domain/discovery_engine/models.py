@@ -65,7 +65,8 @@ class PGDiscovery(SQLDiscovery):
 
 class EngineRepo(AbstractBSONFactory):
     def __init__(self, collection: str) -> None:
-        self.db = settings.mongo_client[settings.MONGO_DB][collection]
+        return
+        # self.db = settings.mongo_client[settings.MONGO_DB][collection]
 
     def _convert_object_id(self, document: Dict[str, Any]) -> Dict[str, Any]:
         if '_id' in document and isinstance(document['_id'], ObjectId):

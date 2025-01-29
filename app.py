@@ -31,6 +31,7 @@ async def lifespan(app: App):
             "username": settings.MONGO_USER,
             "password": settings.MONGO_PASS,
             "port": settings.MONGO_PORT,
+            "is_atlas_cluster": settings.MONGO_IS_ATLAS_CLUSTER,
             # "database": settings.MONGO_DB,
         },
     )

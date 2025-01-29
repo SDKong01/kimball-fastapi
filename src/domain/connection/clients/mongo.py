@@ -19,6 +19,11 @@ class MongoClientConn(ConnClient):
             "defatul": "5432",
             "beauty_name": "Port",
         },
+        "is_atlas_cluster": {
+            "mandatory": False,
+            "type": "bool",
+            "beauty_name": "Is Atlas Cluster",
+        },
         # "database": {"mandatory": False, "type": "str"},
     }
 
@@ -29,8 +34,19 @@ class MongoClientConn(ConnClient):
 
     def stablish_connection(self, **kwargs):
         params = self.conn_params.params
-        params["port"] = int(params["port"])
-        connection = MongoClient(**params)
+
+        url = "mongodb+srv://" if params.get("is_atlas_cluster") else "mongodb://"
+        url = f"{url}{params['username']}" if params.get("username") else url
+        url = (
+            f"{url}:{params['password']}@"
+            if params.get("password") and params.get("username")
+            else f"{url}"
+        )
+        url = f"{url}{params['host']}"
+        # print("url", url)
+
+        # params["port"] = int(params["port"])
+        connection = MongoClient(url)
         return connection
 
     def ping(self, connection: Any, *args, **kwargs) -> bool:

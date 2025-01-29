@@ -1,4 +1,5 @@
 from os import getenv
+from ast import literal_eval
 from os import environ
 from dotenv import load_dotenv
 from typing import Optional, Dict, Any, List
@@ -22,6 +23,9 @@ class AppSetting(BaseSettings):
     MONGO_DB: str = getenv('MONGO_DB', 'kimball')
     MONGO_USER: str = getenv('MONGO_USER', '')
     MONGO_PASS: str = getenv('MONGO_PASS', '')
+    MONGO_IS_ATLAS_CLUSTER: bool = literal_eval(
+        getenv('MONGO_IS_ATLAS_CLUSTER', "False")
+    )
 
     # Redis settings
     REDIS_HOST: str = getenv('REDIS_HOST', 'localhost')
@@ -46,15 +50,15 @@ class AppSetting(BaseSettings):
             "description": self.DESCRIPTION,
         }
 
-    @property
-    def mongo_client(self) -> MongoDBConnection:
-        connection_string = "mongodb://"
-        if self.MONGO_USER and self.MONGO_PASS:
-            connection_string = f"mongodb+srv://{self.MONGO_USER}:{self.MONGO_PASS}@{self.MONGO_HOST}:{self.MONGO_PORT}"
-        else:
-            connection_string = f"mongodb+srv://{self.MONGO_HOST}:{self.MONGO_PORT}"
+    # @property
+    # def mongo_client(self) -> MongoDBConnection:
+    #     connection_string = "mongodb://"
+    #     if self.MONGO_USER and self.MONGO_PASS:
+    #         connection_string = f"mongodb+srv://{self.MONGO_USER}:{self.MONGO_PASS}@{self.MONGO_HOST}:{self.MONGO_PORT}"
+    #     else:
+    #         connection_string = f"mongodb+srv://{self.MONGO_HOST}:{self.MONGO_PORT}"
 
-        return MongoDBConnection(connection_string=connection_string)
+    #     return MongoDBConnection(connection_string=connection_string)
 
     shared_instances: Dict[str, Any] = {}
 
