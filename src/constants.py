@@ -9,6 +9,20 @@ ORACLE = "oracle"
 REDIS = "redis"
 DB_ENGINES = [MONGO, POSTGRES, ORACLE, REDIS]
 
+# APP ENGINES
+# --------------------------------------------------------
+ONESTREAM = "onestream"
+APPLICATION_ENGINES = [ONESTREAM]
+
+SYS_METADATA_COLLECTION = "sys_metadata"
+SYS_USER_COLLECTION = "sys_users"
+SYS_USER_GROUP_COLLECTION = "sys_user_groups"
+
+SYS_COLLECTION_PREFIX = "sys_"
+TEMP_COLLEXTION_PREFIX = "temp_"
+
+CONSTRAINT_PREFIX = [SYS_COLLECTION_PREFIX, TEMP_COLLEXTION_PREFIX]
+
 # MONGO DB
 # --------------------------------------------------------
 
@@ -18,7 +32,7 @@ TEMP_USER_ID = "temp_user_id"
 # Available operator for database querying
 # --------------------------------------------------------
 EQUAL = "eq"
-NOT_EQUAL = "ne"
+NOT_EQUAL = "neq"
 GREATER_THAN = "gt"
 GREATER_THAN_EQUAL = "gte"
 LESS_THAN = "lt"
@@ -27,6 +41,7 @@ IN = "in"
 NOT_IN = "nin"
 LIKE = "like"
 NOT_LIKE = "nlike"
+SUM_GROUP = "sum_group"
 
 DB_OPERATORS = [
     EQUAL,
@@ -39,6 +54,7 @@ DB_OPERATORS = [
     NOT_IN,
     LIKE,
     NOT_LIKE,
+    SUM_GROUP,
 ]
 
 
@@ -46,3 +62,5 @@ DB_OPERATORS = [
 # ---------------------------------------------------------
 # Store the existing and open connections
 existing_connections: Dict[str, Dict[str, Any]] = {}
+
+MAX_LIMIT_QUERY = 100

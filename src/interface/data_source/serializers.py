@@ -14,7 +14,7 @@ class FileResumeSerializer(BaseModel):
 
 
 class CreatedSerializer(BaseModel):
-    created: int
+    created: List[str]
 
 
 class UploadFileResponseSerializer(BaseResponseMixin):

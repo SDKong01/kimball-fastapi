@@ -2,6 +2,11 @@ from typing import Optional, Union, Dict, List
 from pydantic import BaseModel
 
 
+class EngineAvailables(BaseModel):
+    dbs: List[str]
+    apps: List[str]
+
+
 class AllFields(BaseModel):
     username: Optional[str]
     password: Optional[str]

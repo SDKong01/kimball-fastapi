@@ -15,7 +15,7 @@ from src.domain.discovery_engine.data_transformations.matrix_explorer import (
 )
 
 from src.config import settings
-from src.constants import EQUAL
+from src.constants import EQUAL, SYS_METADATA_COLLECTION
 
 
 class MetadataServices:
@@ -69,7 +69,7 @@ class DatasetServices:
 
     @staticmethod
     def value_as_date(value: str) -> datetime:
-        date_pattern = r'\b(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})\b'
+        date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
         if re.match(date_pattern, value):
             try:
                 value_date = parse(value, fuzzy=False)
@@ -103,11 +103,12 @@ class DatasetServices:
         clone: bool = False,
         tags: List[str] = None,
         default_forecas: int = 6,
+        date_column: str = None,
     ) -> Metadata:
         # print("conn params", conn_params)
         _db_manager = ConnServices.get_db_manager(conn_params)
         queryset = QuerySet(query=query, db_manager=_db_manager)
-        data = queryset.limit(1).to_json()
+        data = queryset.limit(1).to_json(replace_date=True)
         db_params = ConnServices.get_existing_conn(conn_params=conn_params)
         full_db_params = {
             "params": db_params.connection_params,
@@ -128,15 +129,13 @@ class DatasetServices:
             is_active=True,
             collection_name=DatasetServices.parse_dataset_name(dataset_name),
             date_grain=None,
-            date_column=None,
+            date_column=date_column,
             target_columns=None,
             dataset_type=None,
             data_source=None,
             description=description,
-            tags=None,
+            tags=tags,
         )
-        if tags:
-            metadata.tags = tags
 
         def remove_bytes_and_lob(obj):
             if isinstance(obj, dict):
@@ -204,7 +203,7 @@ class DatasetServices:
 
         query_save_metadata = Query(
             db=settings.testing_client,
-            collection="metadata",
+            collection=SYS_METADATA_COLLECTION,
             to_insert=metadata_dict,
         )
 
@@ -227,16 +226,16 @@ class DatasetServices:
     def retrieve_as_queryset(dataset_id: str, force_query: bool = False) -> QuerySet:
 
         _filter = Filter(field="dataset_id", operator=EQUAL, value=dataset_id)
-        print("db in retrieve", settings.testing_client)
+        # print("db in retrieve", settings.testing_client)
         query = Query(
             db=settings.testing_client,
-            collection="metadata",
+            collection=SYS_METADATA_COLLECTION,
             filters=[
                 _filter,
             ],
         )
         metadata = DatasetServices.system_db_manager().retrieve(query=query)[0]
-        print("metadata", metadata)
+        # print("metadata", metadata)
         metadata = Metadata(**metadata)
 
         _db_manager = DatasetServices.system_db_manager()

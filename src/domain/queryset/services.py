@@ -53,12 +53,12 @@ class QueryServices:
         )
 
         existing_query = self.cache_manager.retrieve(_query_params)[0]
-        print("existing query", existing_query)
         existing_query = (
             Query(**existing_query)
             if existing_query
             else Query(id=query.id, filters=[])
         )
+        print("existing query", existing_query)
         existing_query.filters = [Filter(**f) for f in existing_query.filters or []]
 
         return existing_query
@@ -100,8 +100,6 @@ class QueryServices:
             #     continue
 
             setattr(existing_query, key, value)
-
-        print("new_query", existing_query.__dict__)
 
         # create new query in cache
         _query = Filter(
@@ -206,7 +204,7 @@ class QuerySet:
 
     def to_json(self, orient: str = "records", **kwargs) -> List[Dict[str, Any]]:
         if self.is_cached:
-            QueryServices().update_or_create(query=self.query)
+            QueryServices().update_or_create(query=self.query, **kwargs)
 
         response = self.db_manager.to_json(query=self.query, orient=orient, **kwargs)
         return response

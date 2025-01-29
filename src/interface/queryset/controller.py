@@ -75,27 +75,18 @@ class QuerySetController:
         response = self.service.run_query(
             conn_params=conn_params, query=query, is_cached=False
         )
+        return JSONResponse(content={"success": True, "result": response})
 
-        def remove_bytes_and_lob(obj):
-            if isinstance(obj, dict):
-                return {k: remove_bytes_and_lob(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [remove_bytes_and_lob(i) for i in obj]
-            elif isinstance(obj, bytes):
-                return str(obj.decode('utf-8'))
-            elif hasattr(obj, 'read') and not isinstance(
-                obj, str
-            ):  # Check if it's a LOB object
-                response = obj.read()
-                response = (
-                    response.decode('utf-8')
-                    if isinstance(response, bytes)
-                    else response
-                )
-                return response
-            else:
-                return obj
-
-        response = remove_bytes_and_lob(response)
-        print(response)
+    @Get(
+        "/date-columns",
+        summary="List date columns",
+        description="List all the date columns available in the queryset.",
+        operation_id="list_date_columns",
+    )
+    async def list_date_columns(self, conn_id: str, query_id: str):
+        conn_params = ConnParams(id=conn_id)
+        query = Query(id=query_id)
+        response = self.service.list_date_columns(
+            conn_params=conn_params, query=query, is_cached=False
+        )
         return JSONResponse(content={"success": True, "result": response})

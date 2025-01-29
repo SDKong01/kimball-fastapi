@@ -40,7 +40,7 @@ class MatrixExplorerTransformations:
         raw_data = List[Any]
 
     def _is_date(self, value: str) -> bool:
-        date_pattern = r'\b(\d{4}[-/]\d{2}[-/]\d{2}(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
+        date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
         if re.match(date_pattern, value):
             return True
         # try:

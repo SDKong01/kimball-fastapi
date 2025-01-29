@@ -18,41 +18,56 @@ from src.domain.data_source.exceptions import (
 from src.config import settings
 from openpyxl import load_workbook, Workbook
 from src.domain.dataset.services import DatasetServices
+from abc import ABC, abstractmethod
 
 
-class FileServices:
-    def __init__(self):
-        self.our = None
-        # self.our_db = QuerySet(db_manager=settings.db_client)
+@dataclass
+class DataSetDTO:
+    data: List[Dict[str, Any]]
+    collection_name: str
 
-    ### -------------------- File Upload --------------------
-    def _file_format(self, file_name: str) -> str:
-        valid_extensions = ["csv", "json", "xls", "xlsx", "zip"]
-        extension = file_name.split(".")[-1]
-        if extension not in valid_extensions:
-            raise InvalidFormatException(item="file", detail="Invalid file format")
-        return extension
 
-    def process_csv(self, file: SpooledTemporaryFile) -> List[dict]:
-        content = file.read().decode("utf-8").splitlines()
+class ProcesorBase(ABC):
+    def __init__(self, uploadfile: UploadFile):
+        self.uploadfile = uploadfile
+        self.file: SpooledTemporaryFile = uploadfile.file
+
+    def coll_name(self) -> str:
+        full_filename = self.uploadfile.filename
+        file_name = full_filename.split(".")[:-1]
+        file_name = " ".join(file_name)
+        return f"temp_{file_name}"
+
+    @abstractmethod
+    def process(self) -> Tuple[DataSetDTO]:
+        pass
+
+
+class CSVProcesor(ProcesorBase):
+    def process(self) -> Tuple[DataSetDTO]:
+        content = self.file.read().decode("utf-8").splitlines()
         reader = list(csv.DictReader(content))
-        return reader
+        response = DataSetDTO(data=reader, collection_name=self.coll_name())
+        return (response,)
 
-    def process_json(self, file: SpooledTemporaryFile) -> List[dict]:
-        content = file.read().decode("utf-8")
+
+class JSONProcesor(ProcesorBase):
+    def process(self) -> Tuple[DataSetDTO]:
+        content = self.file.read().decode("utf-8")
         data = json.loads(content)
-        return data
+        response = DataSetDTO(data=data, collection_name=self.coll_name())
+        return (response,)
 
-    def process_xls(self, file: SpooledTemporaryFile) -> List[dict]:
+
+class XLSProcesor(ProcesorBase):
+    def process(self, file: SpooledTemporaryFile) -> Tuple[DataSetDTO]:
         df = pd.read_excel(file)
         data = df.to_dict(orient='records')
-        return data
+        response = DataSetDTO(data=data, collection_name=self.coll_name())
+        return (response,)
 
-    def split_numbers_and_letters(self, s: str) -> Tuple[str, str]:
-        numbers = ''.join([char for char in s if char.isdigit()])
-        letters = ''.join([char for char in s if char.isalpha()])
-        return (numbers, letters)
 
+class XLSXProcesor(ProcesorBase):
     def _excel_columns(self) -> List[str]:
         columns = []
         for letter in string.ascii_uppercase:
@@ -62,75 +77,92 @@ class FileServices:
                 columns.append(first_letter + second_letter)
         return columns
 
-    def process_xlsx(self, file: SpooledTemporaryFile) -> List[dict]:
-        workbook = load_workbook(file)
-        sheet = workbook.active
+    def split_numbers_and_letters(self, s: str) -> Tuple[str, str]:
+        numbers = ''.join([char for char in s if char.isdigit()])
+        letters = ''.join([char for char in s if char.isalpha()])
+        return (numbers, letters)
+
+    def process(self) -> Tuple[DataSetDTO]:
+        workbook = load_workbook(self.file)
+        sheets = workbook.sheetnames
         data = []
-        # last_row = sheet.max_row
-        # last_column = sheet.max_column
+        response = []
+        for s in sheets:
+            sheet = workbook[s]
+            data = []
+            data = [
+                {
+                    "x": int(self.split_numbers_and_letters(cell.coordinate)[0]),
+                    "y": self._excel_columns().index(
+                        self.split_numbers_and_letters(cell.coordinate)[1]
+                    ),
+                    "value": cell.value,
+                    "id": cell.coordinate,
+                }
+                for row in sheet.iter_rows()
+                for cell in row
+            ]
+            response.append(DataSetDTO(data=data, collection_name=f"temp_{s}"))
 
-        for row in sheet.iter_rows():
-            for cell in row:
-                x, y = self.split_numbers_and_letters(cell.coordinate)
-                data.append(
-                    {
-                        "x": int(x),
-                        "y": self._excel_columns().index(y),
-                        "value": cell.value,
-                        "id": cell.coordinate,
-                    }
-                )
-                # print(f"Celda: {cell.coordinate}, Valor: {cell.value}")
-                # break
-        return data
+        return tuple(response)
 
-    def process_zip(self, file: SpooledTemporaryFile) -> List[dict]:
-        data = []
-        with zipfile.ZipFile(file, 'r') as zip_ref:
-            for f in zip_ref.namelist():
-                try:
-                    file_format = self._file_format(f)
-                    parser = self._get_file_parser(file_format)
-                    file_bytes = zip_ref.read(f)
-                    file_io = io.BytesIO(file_bytes)
-                    _data = parser(file_io)
-                    data += _data
-                except:
-                    continue
-        return data
 
-    def _get_file_parser(self, format: str) -> callable:
-        parsers = {
-            "csv": self.process_csv,
-            "json": self.process_json,
-            "xls": self.process_xls,
-            "xlsx": self.process_xlsx,
-            "zip": self.process_zip,
-        }
-        return parsers[format]
+class FileServices:
+    def __init__(self):
+        pass
 
-    def _file_name(self, file_name: str) -> str:
-        full_filename = file_name
-        file_name = full_filename.split(".")[:-1]
-        file_name = " ".join(file_name)
-        return file_name
+    ### -------------------- File Upload --------------------
+    def _file_format(self, file_name: str) -> str:
+        valid_extensions = ["csv", "json", "xls", "xlsx", "zip"]
+        extension = file_name.split(".")[-1]
+        if extension not in valid_extensions:
+            raise InvalidFormatException(item="file", detail="Invalid file format")
+        return extension
 
-    def upload_file(self, file: UploadFile, db: str) -> int:
+    # def process_zip(self, file: SpooledTemporaryFile) -> List[dict]:
+    #     data = []
+    #     with zipfile.ZipFile(file, 'r') as zip_ref:
+    #         for f in zip_ref.namelist():
+    #             try:
+    #                 file_format = self._file_format(f)
+    #                 parser = self._get_file_parser(file_format)
+    #                 file_bytes = zip_ref.read(f)
+    #                 file_io = io.BytesIO(file_bytes)
+    #                 _data = parser(file_io)
+    #                 data += _data
+    #             except:
+    #                 continue
+    #     return data
+
+    available_formats = ["csv", "json", "xls", "xlsx"]
+
+    format_processors: Dict[str, ProcesorBase] = {
+        "csv": CSVProcesor,
+        "json": JSONProcesor,
+        "xls": XLSProcesor,
+        "xlsx": XLSXProcesor,
+    }
+
+    def _instatiate_processor(self, file: UploadFile) -> ProcesorBase:
         file_format = self._file_format(file.filename)
-        parser = self._get_file_parser(file_format)
-        data_parsed = parser(file.file)
-        file_name = self._file_name(file.filename)
-        data_services = DatasetServices()
-        data_services.create_only_data(data=data_parsed, collection_name=file_name)
-        # self.clone_to_self_db(collection_dest=file_name, db_dest=db, data=data_parsed)
-        return len(data_parsed)
+        if not file_format:
+            raise InvalidFormatException(
+                item="file",
+                detail="Invalid file format. Only csv, json, xls, xlsx, zip are allowed",
+            )
+        processor = self.format_processors.get(file_format, CSVProcesor)(file)
+        return processor
 
-    # def clone_to_self_db(
-    #     self,
-    #     collection_dest: str,
-    #     db_dest: str,
-    #     data: Union[Dict[str, Any], Dict[str, Any], None] = None,
-    # ):
-    #     self.our_db.db_manager.collection = collection_dest
-    #     self.our_db.db_manager.db = db_dest
-    #     self.our_db.insert_many(data)
+    def upload_file(self, file: UploadFile) -> List[str]:
+        processor = self._instatiate_processor(file)
+        datasets = processor.process()
+        data_services = DatasetServices()
+        created = []
+
+        for dt in datasets:
+            data_services.create_only_data(
+                data=dt.data, collection_name=dt.collection_name
+            )
+            created.append(dt.collection_name)
+
+        return created

@@ -35,7 +35,7 @@ class KeyValueManager(DBManager):
         key = None
         value = None
         for q in query.filters:
-            print("q", q)
+            # print("q", q)
             if q.operator == EQUAL:
                 key = q.field
                 value = pickle.dumps(q.value)

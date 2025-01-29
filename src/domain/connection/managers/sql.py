@@ -14,6 +14,7 @@ from src.constants import (
     NOT_IN,
     LIKE,
     NOT_LIKE,
+    MAX_LIMIT_QUERY,
 )
 
 
@@ -32,6 +33,14 @@ class SQLManager(DBManager):
         NOT_LIKE: "NOT LIKE",
     }
 
+    aggregators_translation = {
+        "count": "COUNT",
+        "sum_group": "SUM",
+        "avg": "AVG",
+        "max": "MAX",
+        "min": "MIN",
+    }
+
     finish_query = ";"
 
     query_list_tables = (
@@ -48,45 +57,67 @@ class SQLManager(DBManager):
         return list(set(item[0] for item in response))
 
     def _kwargs_to_query(self, query=Query, **kwargs):
+        replace_date = kwargs.get("replace_date", False)
         schema = query.schema
         table = query.table
         print(query)
         if not schema or not table:
             raise Exception("Schema and table are required")
         where_statement = "WHERE " if query.filters else ""
-
-        def is_number(value: str) -> bool:
-            try:
-                int(value)
-                return True
-            except ValueError:
-                pass
-
-            try:
-                float(value)
-                return True
-            except ValueError:
-                False
-
-            return False
+        fields_statement = "*,"
+        order_by_statement = f'ORDER BY "{query.order_by}"' if query.order_by else ""
+        group_by_statement = f'GROUP BY "{query.group_by}"' if query.group_by else ""
+        limit_statement = f'LIMIT {query.limit}' if query.limit else ""
 
         for q in query.filters:
-            if isinstance(q, dict):
-                q = Filter(**q)
+            q = Filter(**q) if isinstance(q, dict) else q
             op = self.operators_translation.get(q.operator)
             if op:
-                if is_number(q.value):
-                    where_statement += f"{q.field} {op} {q.value} AND "
-                else:
-                    where_statement += f"{q.field} {op} '{q.value}' AND "
+                where_statement += f"{q.field} {op} '{q.value}' OR "
 
-        where_statement = where_statement[:-5]
+        where_statement = where_statement[:-4]
 
-        fields = "*"
+        query.fields = query.fields or []
         if query.fields:
-            fields = ", ".join(query.fields)
+            fields_statement = ""
 
-        query_string = f"SELECT {fields} FROM {schema}.{table} {where_statement}{self.finish_query}"
+        for f in query.fields:
+            if isinstance(f, dict):
+                f = Filter(**f)
+            if f.operator == "count":
+                fields_statement += f'count("{f.field}") AS "{f.field}",'
+            if f.operator == "sum":
+                fields_statement += f'sum({f.field}) AS "{f.field}",'
+            if f.operator == "avg":
+                fields_statement += f'avg("{f.field}") AS "{f.field}",'
+            if f.operator == "max":
+                fields_statement += f'max("{f.field}") AS "{f.field}", '
+            if f.operator == "min":
+                fields_statement += f'min("{f.field}") AS "{f.field}", '
+            if f.operator == "fields":
+                fields_statement += f'"{f.field}",'
+            if f.operator == "field_as":
+                fields_statement += f'"{f.field}" AS "{f.value}",'
+
+        if query.date_column and replace_date:
+            if fields_statement == "*,":
+                # There is no fields in the query so we need to get the column names
+                parsed_query = f"SELECT * FROM {schema}.{table}  {where_statement} {group_by_statement} LIMIT 1{self.finish_query}"
+                with self.conn.cursor() as cursor:
+                    cursor.execute(parsed_query)
+                    column_names = [desc[0] for desc in cursor.description]
+
+                fields_statement = ", ".join(column_names)
+
+            # Replace the date column name with the alias "Calendar Date"
+            fields_statement = fields_statement.replace(
+                query.date_column, f'{query.date_column} AS "Calendar Date"'
+            )
+
+        fields_statement = fields_statement.removesuffix(",")
+
+        query_string = f"SELECT {fields_statement} FROM {schema}.{table} {where_statement} {group_by_statement} {order_by_statement} {limit_statement}{self.finish_query}"
+        print(query_string)
         return query_string
 
     def _parse_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
@@ -134,8 +165,6 @@ class SQLManager(DBManager):
                 self.query_list_databases,
             )
             response = cursor.fetchall()
-            print("response", response)
-            print("response", response.__class__)
         return self.process_response(response)
 
     def to_json(

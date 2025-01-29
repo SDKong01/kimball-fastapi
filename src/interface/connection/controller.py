@@ -14,9 +14,10 @@ from src.application.connection.services import (
     ConnectionAppServices,
 )
 from src.interface.mixins import ErrorResponseSerializer
-from src.constants import MONGO, DB_ENGINES
+from src.constants import MONGO, DB_ENGINES, APPLICATION_ENGINES
 from src.domain.data_source.exceptions import DBEngineNotSupported
 from src.domain.connection.models import ConnParams
+from .serializers import EngineAvailables
 
 
 @Controller(tag="Connection", prefix="v1/connection")
@@ -34,7 +35,11 @@ class ConnectionController:
         },
     )
     async def available_engines(self):
-        return JSONResponse(content={"success": True, "data": DB_ENGINES})
+        serializer = EngineAvailables(
+            dbs=DB_ENGINES,
+            apps=APPLICATION_ENGINES,
+        )
+        return JSONResponse(content={"success": True, "data": serializer.dict()})
 
     @Get(
         "/schema/{engine}",

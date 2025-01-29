@@ -32,7 +32,7 @@ class DataSourceController:
         },
     )
     async def upload_file(self, file: UploadFile = File(...)):
-        response = self.service.upload_file(file=file, db=TEMP_USER_ID)
+        response = self.service.upload_file(file=file)
         response = UploadFileResponseSerializer(
             success=True, data={"created": response}
         )

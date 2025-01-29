@@ -17,12 +17,13 @@ from src.domain.connection.exceptions import (
 class Filter:
     field: str
     operator: str
-    value: Union[str, Dict]
+    value: Union[str, Dict, List[str], None]
 
     def __post_init__(self):
         self.validate_operator()
 
     def validate_operator(self):
+        return
         if self.operator not in DB_OPERATORS:
             raise ArgumentError(
                 item="operator",
@@ -36,10 +37,11 @@ class Query:
     filters: List[Filter] = None
     exclude: Optional[List[Filter]] = None
     order_by: Optional[str] = None
+    group_by: Optional[str] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
     headers: Optional[Dict[str, Union[str, Dict[str, str], List[str], None]]] = None
-    fields: Optional[List[str]] = None
+    fields: Optional[List[Union[str, Filter]]] = None
     fields_detail: Optional[Dict[str, Union[str, Dict[str, str], List[str], None]]] = (
         None
     )
@@ -52,3 +54,4 @@ class Query:
     collection: Optional[str] = None
     schema: Optional[str] = None
     table: Optional[str] = None
+    date_column: Optional[str] = None

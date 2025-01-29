@@ -7,10 +7,11 @@ class QueryCreateSerializer(BaseModel):
     filters: List[Dict[str, Any]] = None
     exclude: List[Dict[str, Any]] = None
     order_by: str = None
+    group_by: str = None
     limit: int = None
     offset: int = None
     headers: Dict[str, Union[str, Dict[str, str], List[str], None]] = None
-    fields: List[str] = None
+    fields: List[Dict[str, Any]] = None
     fields_detail: Dict[str, Union[str, Dict[str, str], List[str], None]] = None
     raw_query: Optional[Union[str, Dict[str, str], List[str], None]] = None
     db: str = None
@@ -18,17 +19,19 @@ class QueryCreateSerializer(BaseModel):
     db_schema: str = None
     table: str = None
     is_cached: bool = True
+    date_column: str = None
 
 
 class QueryResponseSerializer(BaseModel):
     id: Optional[str] = None
     filters: List[Dict[str, Any]] = None
     exclude: List[Dict[str, Any]] = None
+    group_by: str = None
     order_by: str = None
     limit: int = None
     offset: int = None
     headers: Dict[str, Union[str, Dict[str, str], List[str], None]] = None
-    fields: List[str] = None
+    fields: List[Dict[str, Any]] = None
     fields_detail: Dict[str, Union[str, Dict[str, str], List[str], None]] = None
     raw_query: Optional[Union[str, Dict[str, str], List[str], None]] = None
     # to_insert: Optional[
@@ -38,6 +41,7 @@ class QueryResponseSerializer(BaseModel):
     collection: str = None
     db_schema: str = None
     table: str = None
+    date_column: str = None
 
 
 class ConnParamsIDSerializer(BaseModel):

@@ -35,7 +35,7 @@ class DatasetController:
             tags=params.tags,
             default_forecas=params.default_forecas,
         )
-        print("response", response)
+        # print("response", response)
         return JSONResponse(content={"success": True, "result": response.__dict__})
 
     @Get(

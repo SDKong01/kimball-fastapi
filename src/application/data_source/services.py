@@ -68,35 +68,5 @@ class CloneParamsDTO:
 
 
 class DataSourceAppServices:
-    ### -------------------- DB Connection --------------------
-    # def _get_connector_by_engine(self, engine: str) -> DataSourceDBServices:
-    #     return services.get(engine)()
-
-    # def clone_legacy(self, params: CloneParamsDTO, db: str) -> str:
-    #     conn_params = ConnParams(
-    #         id=params.conn_id,
-    #         engine=params.engine,
-    #     )
-    #     connector = self._get_connector_by_engine(params.engine)(conn_params)
-    #     new_items = connector.clone_to_self_db(
-    #         collection_origin=params.collection,
-    #         db_origin=params.db,
-    #         collection_dest=params.collection,
-    #         db_dest=db,
-    #     )
-    #     return new_items
-
-    # def clone(
-    #     conn_params: ConnParams, query_params: Query, query_id: str = None
-    # ) -> int:
-    #     return DataSourceServices.clone(conn_params, db, collection)
-
-    # def save_metadata(
-    #     conn_params: ConnParams, query_params: Query, query_id: str = None
-    # ) -> int:
-    #     return DataSourceServices.save_metadata(conn_params, db, collection)
-
-    ### -------------------- File Upload --------------------
-
-    def upload_file(self, file: UploadFile, db: str) -> int:
-        return DataSourceServices.file_services().upload_file(file=file, db=db)
+    def upload_file(self, file: UploadFile) -> List[str]:
+        return DataSourceServices.file_services().upload_file(file=file)

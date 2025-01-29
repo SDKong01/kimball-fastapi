@@ -41,9 +41,9 @@ class DatasetAppServices:
         tags: List[str] = None,
         default_forecas: int = 6,
     ):
-        print("conn params in aplication", conn_params)
+        # print("conn params in aplication", conn_params)
         _query = QueryServices().retrieve(query=query)
-        print("query in aplication", _query)
+        # print("query in aplication", _query)
         response = DatasetServices().create(
             description=description,
             dataset_name=dataset_name,
