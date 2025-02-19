@@ -1,11 +1,12 @@
 from nest.core import Controller, Depends, Get, Post, Patch, Delete
 from fastapi import UploadFile, File, status, Response, HTTPException
 from fastapi.responses import JSONResponse
-from src.application.queryset.services import QuerySetAppServices
+from src.application.queryset.services import QuerySetAppServices, HumanQueryDTO
 from src.interface.queryset.serializers import (
     QueryCreateSerializer,
     QueryResponseSerializer,
     ConnParamsIDSerializer,
+    HumanParseQuery,
 )
 from src.domain.queryset.models import Query
 from src.domain.connection.models import ConnParams
@@ -69,12 +70,17 @@ class QuerySetController:
         description="Run queryset.",
         operation_id="run_queryset",
     )
-    async def run_queryset(self, conn_id: str, query_id: str):
+    async def run_queryset(
+        self, query_id: str, conn_id: str = None, is_self_hosted: bool = False
+    ):
         conn_params = ConnParams(id=conn_id)
         query = Query(id=query_id)
-        response = self.service.run_query(
-            conn_params=conn_params, query=query, is_cached=False
-        )
+        if is_self_hosted:
+            response = self.service.run_query_self_hosted(query=query, is_cached=False)
+        else:
+            response = self.service.run_query(
+                conn_params=conn_params, query=query, is_cached=False
+            )
         return JSONResponse(content={"success": True, "result": response})
 
     @Get(
@@ -90,3 +96,15 @@ class QuerySetController:
             conn_params=conn_params, query=query, is_cached=False
         )
         return JSONResponse(content={"success": True, "result": response})
+
+    @Post(
+        "/human_query",
+        summary="Parse human query",
+        description="Parse and save a human query.",
+        operation_id="parse_human_query",
+    )
+    async def human_query(self, params: HumanParseQuery):
+        dto = HumanQueryDTO(**params.dict())
+        response = self.service.parse_human_query(human_query=dto)
+        response = QueryResponseSerializer(**response.__dict__)
+        return JSONResponse(content={"success": True, "result": response.dict()})

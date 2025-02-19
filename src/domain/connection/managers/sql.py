@@ -60,7 +60,6 @@ class SQLManager(DBManager):
         replace_date = kwargs.get("replace_date", False)
         schema = query.schema
         table = query.table
-        print(query)
         if not schema or not table:
             raise Exception("Schema and table are required")
         where_statement = "WHERE " if query.filters else ""
@@ -84,19 +83,12 @@ class SQLManager(DBManager):
         for f in query.fields:
             if isinstance(f, dict):
                 f = Filter(**f)
-            if f.operator == "count":
-                fields_statement += f'count("{f.field}") AS "{f.field}",'
-            if f.operator == "sum":
-                fields_statement += f'sum({f.field}) AS "{f.field}",'
-            if f.operator == "avg":
-                fields_statement += f'avg("{f.field}") AS "{f.field}",'
-            if f.operator == "max":
-                fields_statement += f'max("{f.field}") AS "{f.field}", '
-            if f.operator == "min":
-                fields_statement += f'min("{f.field}") AS "{f.field}", '
-            if f.operator == "fields":
+            op = self.aggregators_translation.get(f.operator, "")
+            if op:
+                fields_statement += f'{op}("{f.field}") AS "{f.field}",'
+            elif f.operator in ["fields", "eq"]:
                 fields_statement += f'"{f.field}",'
-            if f.operator == "field_as":
+            elif f.operator == "field_as":
                 fields_statement += f'"{f.field}" AS "{f.value}",'
 
         if query.date_column and replace_date:
@@ -117,7 +109,6 @@ class SQLManager(DBManager):
         fields_statement = fields_statement.removesuffix(",")
 
         query_string = f"SELECT {fields_statement} FROM {schema}.{table} {where_statement} {group_by_statement} {order_by_statement} {limit_statement}{self.finish_query}"
-        print(query_string)
         return query_string
 
     def _parse_row(self, row: Dict[str, Any]) -> Dict[str, Any]:

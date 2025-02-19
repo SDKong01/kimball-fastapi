@@ -1,11 +1,65 @@
 import re
 import math
 import string
+from itertools import groupby
+from collections import Counter, defaultdict
 from dateutil.parser import parse
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple, Type, Any
 
 from dataclasses import dataclass
+from src.domain.boxtool.services import Services as BoxToolServices
+
+
+@dataclass
+class CellType:
+    is_int: Optional[bool]
+    is_float: Optional[bool]
+    is_bool: Optional[bool]
+    is_date: Optional[bool]
+    is_str: Optional[bool]
+    is_null: Optional[bool]
+    is_empty: Optional[bool]
+
+
+class CellTypeFactory:
+    def __init__(self, value: Any):
+        self.value = value
+
+    def clean_is_empty(self, value: str) -> bool:
+        null_values = ["", " ", "null", "nan", "none", "None"]
+        if value and str(value).lower() in null_values:
+            return None
+        return value
+
+    def _is_date(self) -> bool:
+        date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
+        if re.match(date_pattern, str(self.value)):
+            return True
+        return False
+
+    def compute(self) -> CellType:
+        value = str(self.value).strip()
+        is_empty = bool(value and self.clean_is_empty(str(value)))
+
+        cell_type = CellType(
+            is_int=value.isdigit(),
+            is_float=value.replace(".", "", 1).isdigit() and "." in value,
+            is_date=self._is_date(),
+            is_null=None == value,
+            is_empty=is_empty,
+            is_str=bool(not is_empty and not value.isdigit()),
+            is_bool=value.lower() in {"true", "false", "1", "0"},
+        )
+        return cell_type
+
+
+@dataclass
+class Cell:
+    x: int
+    y: int
+    value: Any
+    celltype: CellType
 
 
 class MatrixExplorerTransformations:
@@ -13,6 +67,11 @@ class MatrixExplorerTransformations:
         # self.data = data
         self.data_list = data
         self.cell_profiles: Dict[str, Dict[str, str]] = {}
+        self.data_map = defaultdict(lambda: defaultdict(lambda: None))
+        self.excel_data_map = defaultdict(lambda: defaultdict(lambda: None))
+        for item in self.data_list:
+            self.data_map[item["y"]][item["x"]] = item["value"]
+            self.excel_data_map[item["column"]][item["row"]] = item["value"]
 
     @dataclass
     class CellProfile:
@@ -24,281 +83,447 @@ class MatrixExplorerTransformations:
         is_index: Optional[float] = None
 
     @dataclass
-    class CellType:
-        is_int: Optional[bool]
-        is_float: Optional[bool]
-        is_bool: Optional[bool]
-        is_date: Optional[bool]
-        is_str: Optional[bool]
-        is_null: Optional[bool]
-        is_empty: Optional[bool]
-
-    @dataclass
     class TableData:
         columns_type = List[Any]
         headers = List[str]
         raw_data = List[Any]
 
-    def _is_date(self, value: str) -> bool:
-        date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
-        if re.match(date_pattern, value):
-            return True
-        # try:
-        #     parse(string, fuzzy=False)
-        #     return True
-        # except:
-        #     pass
+    # def _is_date(self, value: str) -> bool:
+    #     date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
+    #     if re.match(date_pattern, value):
+    #         return True
+    #     return False
+    # try:
+    #     parse(string, fuzzy=False)
+    #     return True
+    # except:
+    #     pass
 
-        # try:
-        #     datetime.fromtimestamp(int(value))
-        #     return True
-        # except:
-        #     pass
+    # try:
+    #     datetime.fromtimestamp(int(value))
+    #     return True
+    # except:
+    #     pass
 
-        # try:
-        #     datetime.fromtimestamp(int(value) / 1000)
-        #     return True
-        # except:
-        #     pass
+    # try:
+    #     datetime.fromtimestamp(int(value) / 1000)
+    #     return True
+    # except:
+    #     pass
 
-        # return False
+    # return False
 
-    def clean_is_empty(self, value: str) -> bool:
-        null_values = ["", " ", "null", "nan", "none"]
-        if value and str(value).lower() in null_values:
-            return None
-        return value
+    # def clean_is_empty(self, value: str) -> bool:
+    #     null_values = ["", " ", "null", "nan", "none", "None"]
+    #     if value and str(value).lower() in null_values:
+    #         return None
+    #     return value
 
-    def get_value_type(self, value: str) -> CellType:
-        cell_type = self.CellType(
-            is_int=bool(value and str(value).isdigit()),
-            is_float=bool(value and str(value).replace(".", "", 1).isdigit()),
-            is_date=bool(value and self._is_date(str(value))),
-            is_null=None == value,
-            is_empty=bool(value and self.clean_is_empty(str(value))),
-            is_str=bool(value and not str(value).isdigit()),
-            is_bool=bool(value and str(value).lower() in ["true", "false", "1", "0"]),
+    # def get_value_type(self, value: str) -> CellType:
+    #     str_value = str(value)
+    #     cell_type = self.CellType(
+    #         is_int=bool(value and str_value.isdigit()),
+    #         is_float=bool(value and str_value.replace(".", "", 1).isdigit()),
+    #         is_date=bool(value and self._is_date(str_value)),
+    #         is_null=None == value,
+    #         is_empty=bool(value and self.clean_is_empty(str_value)),
+    #         is_str=bool(value and not str_value.isdigit()),
+    #         is_bool=bool(value and str_value.lower() in ["true", "false", "1", "0"]),
+    #     )
+
+    #     return cell_type
+
+    # class Cell:
+    #     def __init__(self):
+    #         self.row_condition: None
+    #         self.coll_condidtion: None
+    #         self.prev_rows: None
+    #         self.prev_cols: None
+    #         x: 0
+    #         y: 0
+    #         is_row_oriented: True
+    #         is_col_oriented: True
+
+    def orientation(self, x: int, y: int, x_end: int, y_end: int) -> Tuple[int, int]:
+        full_table_data = [
+            Cell(
+                x=item["x"],
+                y=item["y"],
+                value=item["value"],
+                celltype=CellTypeFactory(item["value"]).compute(),
+            )
+            # ((item["x"], item["y"]), item)
+            for item in self.data_list
+            if item["x"] in range(x + 1, x_end) and item["y"] in range(y + 1, y_end)
+        ]
+        data_sorted = sorted(
+            full_table_data,
+            key=lambda d: d.y,
         )
-        return cell_type
+
+        prev_x, prev_y = None, None
+        prev_x_cells: List[CellType] = []
+        prev_y_cells: List[CellType] = []
+        is_x_oriented, is_y_oriented = True, True
+
+        def ignore_nones(x: CellType, y: Cell) -> bool:
+            return x == y if not y.celltype.is_null else True
+
+        for cell in data_sorted:
+            # Table begin
+            if not prev_x and not prev_y:
+                prev_x, prev_y = cell.x, cell.y
+                continue
+
+            # Not orientation founded, break the loop
+            if not is_x_oriented and not is_y_oriented:
+                is_y_oriented, is_x_oriented = True, True
+                print("not orientation found")
+                break
+
+            is_x_different = cell.x != prev_x
+            is_y_differente = cell.y != prev_y
+
+            if is_x_different and is_x_oriented:
+                is_x_oriented = all(ignore_nones(p, cell) for p in prev_x_cells)
+                prev_x_cells = []
+
+            if is_y_differente and is_y_oriented:
+                is_y_oriented = all(ignore_nones(p, cell) for p in prev_y_cells)
+                prev_y_cells = []
+
+            prev_x_cells.append(cell.celltype)
+            prev_y_cells.append(cell.celltype)
+            prev_x, prev_y = cell.x, cell.y
+
+        return is_x_oriented, is_y_oriented
+
+    # def get_value_type(self, value: str) -> CellType:
+    #     value = str(value).strip()
+    #     is_empty = bool(value and self.clean_is_empty(str(value)))
+
+    #     cell_type = CellType(
+    #         is_int=value.isdigit(),
+    #         is_float=value.replace(".", "", 1).isdigit() and "." in value,
+    #         is_date=self._is_date(value),
+    #         is_null=None == value,
+    #         is_empty=is_empty,
+    #         is_str=bool(not is_empty and not value.isdigit()),
+    #         is_bool=value.lower() in {"true", "false", "1", "0"},
+    #     )
+    #     return cell_type
 
     def _all_false(self, iterable) -> bool:
         return all(not element for element in iterable)
 
-    def _find_empy_rows(self, initial: bool = False):
-        last_row = max(self.data_list, key=lambda x: x["x"])["x"]  # row = numers
-        last_col = max(self.data_list, key=lambda x: x["y"])["y"]  # col = letters
+    from collections import Counter
 
-        initial_row = min(self.data_list, key=lambda x: x["x"])["x"]
-        initial_col = min(self.data_list, key=lambda x: x["y"])["y"]
+    # def check_orientation(
+    #     self, values: List[str], headers: bool = False, to_print: bool = False
+    # ) -> bool:
+    #     if to_print:
+    #         print("values pre clean empty check orientation", values)
+    #     values = [self.clean_is_empty(v) for v in values]  # Limpiar primero
+    #     if to_print:
+    #         print("values after check_orientation", values)
+    #     acceptable = round(len(values))  # Evita `math.floor` o `math.ceil`
+    #     col_type = Counter()
 
-        tables = []
-        _init_row = None
-        _last_row = None
-        for row in range(initial_row, last_row + 1):
-            values = [
-                item["value"]
-                for item in filter(lambda item: item["x"] == row, self.data_list)
-            ]
+    #     for cell in values:
+    #         cell_type = self.get_value_type(cell)
+    #         col_type["is_int"] += cell_type.is_int
+    #         col_type["is_float"] += cell_type.is_float
+    #         col_type["is_date"] += cell_type.is_date
+    #         col_type["is_str"] += cell_type.is_str or headers  # Simplificado
+    #     if to_print:
+    #         print("vales after for in check_orientation", col_type)
+    #     return any(value >= acceptable for value in col_type.values())
 
-            is_empty_row = self._all_false(values)
-            # Define initial table row if not defined
-            _init_row = row if not is_empty_row and not _init_row else _init_row
+    # from collections import defaultdict
 
-            # Define final table row if not defined and current row is empty
-            _last_row = row - 1 if is_empty_row and _init_row else _last_row
+    # def process_matrix(self, has_headers: bool = False):
+    #     box_services = BoxToolServices(self.data_list)
+    #     new_coordinates = box_services.execute()
+    #     final_tables = []
+    #     for table in new_coordinates:
+    #         # check if table has headers
+    #         table_init = table[0]
+    #         table_end = table[1]
+    #         row_init = table_init[1]
+    #         column_init = table_init[0]
 
-            if _init_row and _last_row:
-                tables.append(((initial_col, _init_row), (last_col, _last_row)))
-                _init_row = None
-                _last_row = None
+    #         row_end = table_end[1]
+    #         column_end = table_end[0]
 
-            if _init_row and row == last_row:
-                tables.append(((initial_col, _init_row), (last_col, row)))
+    #         # Single row or column, not a table
+    #         if row_init == row_end or column_init == column_end:
+    #             continue
 
-        return tables
+    #         """
+    #         Check row orientation
+    #         row = numbers = x
+    #         Let's remove the first column then evaluate three rows
+    #         wether removing the first column there is no any row we pop the table since it is a single row, not a table
+    #         wether every row has the same type of values we might assume the table is row-oriented
+    #         """
 
-    def _find_empty_columns(self, initial: bool = False):
-        tables = self._find_empy_rows()
+    #         row_types = []
+    #         for row in range(row_init, row_init + 3):
+    #             values = {
+    #                 item["value"]
+    #                 for item in self.data_list
+    #                 if item["y"] == row
+    #                 and item["x"] in range(column_init + 1, column_end + 1)
+    #             }
+
+    #             orientation = self.check_orientation(values)
+    #             row_types.append(orientation)
+    #         print(row_types)
+
+    #         """
+    #         Check column orientation
+    #         column = letters = y
+    #         Let's apply the same logic: remove the first row and evaluate every column type values
+    #         """
+    #         col_types = []
+    #         for col in range(column_init, column_init + 3):
+    #             values = {
+    #                 item["value"]
+    #                 for item in self.data_list
+    #                 if item["x"] == col
+    #                 and item["y"] in range(row_init + 1, row_end + 1)
+    #             }
+    #             orientation_col = self.check_orientation(values)
+    #             col_types.append(orientation_col)
+
+    #         """
+    #         Evaluate orientation
+    #         wetherCellType the table is both, row and column-oriented, we cannot determine the orientatation
+    #         """
+    #         row_oriented = all(row_types)
+    #         col_oriented = all(col_types)
+
+    #         """
+    #         Find headers
+    #         Let's evalueate the first row or column, depending of the orientation, to find possible headers
+    #         """
+    #         # print(table)
+    #         final_tables += self.get_table_data(
+    #             table, row_oriented, col_oriented, has_headers
+    #         )
+
+    #     return final_tables
+
+    def process_matrix(self, has_headers: bool = False):
+        box_services = BoxToolServices(self.data_list)
+        new_coordinates = box_services.execute()
         final_tables = []
-        for t in tables:
-            initial_col = t[0][0]
-            final_col = t[1][0]
 
-            initial_row = t[0][1]
-            final_row = t[1][1]
+        # Crear estructura de datos para acceso rápido
+        # data_map = defaultdict(lambda: defaultdict(lambda: None))
+        # for item in self.data_list:
+        #     data_map[item["y"]][item["x"]] = item["value"]
 
-            _init_col = None
-            _last_col = None
+        # def evaluate_orientation(start, end, fixed, is_row):
+        #     if is_row:
+        #         print(start, end, fixed)
+        #     """Evalúa la orientación de filas o columnas."""
+        #     orientations = []
 
-            for col in range(initial_col, final_col + 1):
-                coordinates = None
-                values = [
-                    item["value"]
-                    for item in filter(
-                        lambda item: item["y"] == col
-                        and item["x"] in range(initial_row, final_row + 1),
-                        self.data_list,
-                    )
-                ]
-                empty_col = self._all_false(values)
+        #     value = lambda index, pos: (
+        #         self.data_map[index][pos] if is_row else self.data_map[pos][index]
+        #     )
 
-                _init_col = col if not empty_col and not _init_col else _init_col
-                _last_col = col - 1 if empty_col and _init_col else _last_col
+        #     for index in range(start, max(start + 5, end)):
+        #         values = (
+        #             self.data_map[index][pos] if is_row else self.data_map[pos][index]
+        #             for pos in range(fixed + 1, end + 1)
+        #             if self.data_map[index][pos] is not None
+        #         )
+        #         # if is_row:
+        #         #     print("values: ", list(values))
+        #         orientations.append(self.check_orientation(values, to_print=is_row))
+        #     if is_row:
+        #         print("orientations, ", orientations)
+        #     return all(orientations)
 
-                if _init_col and _last_col:
-                    coordinates = (
-                        (_init_col, initial_row),
-                        (_last_col, final_row),
-                    )
-                    _init_col = None
-                    _last_col = None
+        for table in new_coordinates:
+            print("new coordinates", table)
+            (column_init, row_init), (column_end, row_end) = table
 
-                if _init_col and col == final_col + 1:
-                    coordinates = ((_init_col, initial_row), (col, final_row))
-
-                if coordinates and not coordinates[0] == coordinates[1]:
-                    final_tables.append(coordinates)
-
-        return final_tables
-
-    def check_orientation(self, values: List[str], headers: bool = False) -> bool:
-        len_col = len(values)
-        acceptable_value = len_col
-        if acceptable_value % 1 < 0.5:
-            acceptable = math.floor(acceptable_value)
-        else:
-            acceptable = math.ceil(acceptable_value)
-        # print("values", values)
-        # print("acceptable", acceptable)
-        # acceptable = int(len_col * 0.)
-        col_type = {
-            "is_int": 0,
-            "is_float": 0,
-            "is_date": 0,
-            "is_null": 0,
-            "is_empty": 0,
-            "is_str": 0,
-        }
-        for cell in values:
-            cell_type = self.get_value_type(self.clean_is_empty(cell))
-            col_type["is_int"] += cell_type.is_int
-            col_type["is_float"] += cell_type.is_float
-            col_type["is_date"] += cell_type.is_date
-            col_type["is_str"] += cell_type.is_str
-            # col_type["is_empty"] += cell_type.is_empty
-            if headers:
-                col_type["is_str"] += cell_type.is_str
-
-        # print("col_type", col_type)
-
-        if headers and col_type["is_str"] >= acceptable:
-            return True
-
-        for key, value in col_type.items():
-            if value >= acceptable:
-                return True
-
-        return False
-
-    def process_matrix(self):
-        table_coordinates = self._find_empty_columns()
-        final_matrix = []
-        result = None
-        final_tables = []
-        for table in table_coordinates:
-            # check if table has headers
-            table_init = table[0]
-            table_end = table[1]
-            row_init = table_init[1]
-            column_init = table_init[0]
-
-            row_end = table_end[1]
-            column_end = table_end[0]
-
-            values_to_check = []
-
-            # Single row or column, not a table
+            # A single line or single columns, not a table
             if row_init == row_end or column_init == column_end:
                 continue
 
-            """
-            Check row orientation
-            row = numbers = x
-            Let's remove the first column then evaluate three rows
-            wether removing the first column there is no any row we pop the table since it is a single row, not a table
-            wether every row has the same type of values we might assume the table is row-oriented
-            """
+            row_oriented, col_oriented = self.orientation(
+                x=row_init, y=column_init, x_end=row_end, y_end=column_end
+            )
 
-            row_types = []
-            for row in range(row_init, row_init + 3):
-                values = [
-                    item["value"]
-                    for item in filter(
-                        lambda item: item["x"] == row
-                        and item["y"] in range(column_init + 1, column_end + 1),
-                        self.data_list,
-                    )
-                ]
-                print("values row ", values)
-                orientation = self.check_orientation(values)
-                print("orientation row ", orientation)
-                row_types.append(orientation)
+            # row_oriented = evaluate_orientation(
+            #     row_init, row_end, column_init, is_row=True
+            # )
+            # col_oriented = evaluate_orientation(
+            #     column_init, column_end, row_init, is_row=False
+            # )
 
-            """
-            Check column orientation
-            column = letters = y
-            Let's apply the same logic: remove the first row and evaluate every column type values
-            """
-            col_types = []
-            for col in range(column_init, column_init + 3):
-                values = [
-                    item["value"]
-                    for item in filter(
-                        lambda item: item["y"] == col
-                        and int(item["x"]) in range(row_init + 1, row_end + 1),
-                        self.data_list,
-                    )
-                ]
-                print("values col ", values)
-                orientation_col = self.check_orientation(values)
-                print("orientation col ", orientation_col)
-                col_types.append(orientation_col)
+            # if not col_oriented and not row_oriented:
+            #     col_oriented, row_oriented = True, True
 
-            """
-            Evaluate orientation
-            wether the table is both, row and column-oriented, we cannot determine the orientatation
-            """
-            row_oriented = all(row_types)
-            col_oriented = all(col_types)
-
-            """
-            Find headers
-            Let's evalueate the first row or column, depending of the orientation, to find possible headers
-            """
-
-            final_tables += self.get_table_data(table, row_oriented, col_oriented)
-
+            final_tables += self.get_table_data(
+                table, row_oriented, col_oriented, has_headers
+            )
         return final_tables
 
-    def get_table_data(self, table, row_oriented, col_oriented):
-        table_init = table[0]
-        table_end = table[1]
-        row_init = table_init[1]
-        column_init = table_init[0]
+    def parse_cols_rows(self, _range: str):
+        match = re.match(r'^([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)$', _range)
+        if not match:
+            return None, None
+        # print(match.groups())
+        col_inicio, fila_inicio, col_fin, fila_fin = match.groups()
+        columnas = self.generate_range_columns(col_inicio, col_fin)
+        # print("columnas", columnas)
+        fila_inicio = int(fila_inicio)
+        fila_fin = int(fila_fin)
+        filas = list(range(fila_inicio, fila_fin + 1))
 
-        row_end = table_end[1]
-        column_end = table_end[0]
+        return columnas, filas
+
+    def generate_range_columns(self, col_inicio, col_fin):
+        """Transform Excel column in numbers and generate letters range"""
+
+        def columna_a_num(col):
+            # Transfor a column (ej. 'A', 'Z', 'AA') in a number
+            num = 0
+            for char in col:
+                num = num * 26 + (ord(char) - ord('A') + 1)
+            return num
+
+        def num_a_columna(num):
+            # (ej. 1 -> 'A', 27 -> 'AA')
+            col = ""
+            while num > 0:
+                num -= 1
+                col = chr(num % 26 + ord('A')) + col
+                num //= 26
+            return col
+
+        num_inicio = columna_a_num(col_inicio)
+        num_fin = columna_a_num(col_fin)
+
+        return [num_a_columna(n) for n in range(num_inicio, num_fin + 1)]
+
+    def get_raw_data_by_range(self, cell_range: str = None, has_headers: bool = True):
+        if cell_range:
+            cols, rows = self.parse_cols_rows(cell_range)
+        else:
+            cols = sorted({d["column"] for d in self.data_list})
+            rows = sorted({d["row"] for d in self.data_list})
+        filtered_data = []
+        for r in rows:
+            row_data = {"row": r}
+            row_data.update({c: self.excel_data_map[c][r] for c in cols})
+            filtered_data.append(row_data)
+        return filtered_data
+
+    # def get_table_data(self, table, row_oriented, col_oriented, has_headers: bool):
+    #     table_init, table_end = table
+    #     column_init, row_init = table_init
+    #     column_end, row_end = table_end
+
+    #     # 🔹 Construir un diccionario para acceso rápido en O(1)
+    #     # data_map = defaultdict(lambda: defaultdict(lambda: None))
+    #     # for item in self.data_list:
+    #     #     data_map[item["y"]][item["x"]] = item["value"]
+
+    #     headers = []
+    #     possibles_data = []
+
+    #     # 🔹 Calcular headers solo una vez
+    #     if has_headers:
+    #         headers = [
+    #             (
+    #                 self.data_map[y][column_init]
+    #                 if row_oriented
+    #                 else self.data_map[row_init][x]
+    #             )
+    #             for y in range(row_init, row_end + 1)
+    #             if row_oriented
+    #             for x in range(column_init, column_end + 1)
+    #             if col_oriented
+    #         ]
+
+    #     # 🔹 Función para obtener el header de una columna, si no existe, generar uno genérico
+    #     def get_header(index):
+    #         return headers[index] if headers else f"column_{index}"
+
+    #     # 🔹 Procesar datos según orientación
+    #     def process_orientation(is_col_oriented):
+    #         _init = (
+    #             (row_init + 1 if has_headers else row_init)
+    #             if is_col_oriented
+    #             else (column_init + 1 if has_headers else column_init)
+    #         )
+
+    #         range_x = (
+    #             range(column_init, column_end + 1)
+    #             if is_col_oriented
+    #             else range(_init, column_end + 1)
+    #         )
+    #         range_y = (
+    #             range(_init, row_end + 1)
+    #             if is_col_oriented
+    #             else range(row_init, row_end + 1)
+    #         )
+    #         # Obtener datos filtrados
+    #         filtered_data = [
+    #             {"x": x, "y": y, "value": self.data_map[y][x]}
+    #             for x in range_x
+    #             for y in range_y
+    #             if self.data_map[y][x] is not None
+    #         ]
+    #         # Ordenar por la clave correcta (y si es col_oriented, x si no)
+    #         sorted_data = sorted(
+    #             filtered_data, key=lambda d: d["y"] if is_col_oriented else d["x"]
+    #         )
+    #         # Agrupar por la misma clave
+    #         grouped_data = [
+    #             list(group)
+    #             for _, group in groupby(
+    #                 sorted_data, key=lambda d: d["y"] if is_col_oriented else d["x"]
+    #             )
+    #         ]
+
+    #         # Convertir a formato de tabla
+    #         data_table = [
+    #             {get_header(idx): item["value"] for idx, item in enumerate(group)}
+    #             for group in grouped_data
+    #         ]
+
+    #         possibles_data.append(
+    #             {"headers": list(data_table[0].keys()), "data": data_table}
+    #         )
+
+    #     if col_oriented:
+    #         process_orientation(True)
+    #     if row_oriented:
+    #         process_orientation(False)
+
+    #     return possibles_data
+
+    def get_table_data(self, table, row_oriented, col_oriented, has_headers: bool):
+        table_init, table_end = table
+        column_init, row_init = table_init
+        column_end, row_end = table_end
 
         headers = []
-
         possibles_data = []
 
         if row_oriented and not col_oriented:
             headers = [
                 item["value"]
                 for item in filter(
-                    lambda item: item["y"] == column_init
-                    and int(item["x"]) in range(row_init, row_end + 1),
+                    lambda item: item["y"] in range(row_init, row_end + 1)
+                    and item["x"] == column_init,
                     self.data_list,
                 )
             ]
@@ -313,46 +538,52 @@ class MatrixExplorerTransformations:
                 )
             ]
 
-        print("headers", headers)
+        header = lambda x: headers[x] if headers else f"column_{x}"
+        y = lambda x: x - row_init
+        x = lambda y: y - column_init
 
         if col_oriented:
-            _data = []
-            r_init = row_init + 1 if headers else row_init
-            for row in range(r_init, row_end + 1):
-                _doc = {}
-                n = 0
-                for col in range(column_init, column_end + 1):
-                    value = list(
-                        filter(
-                            lambda item: item["x"] == row and item["y"] == col,
-                            self.data_list,
-                        )
-                    )[0]["value"]
-                    header = headers[n] if headers else f"column_{n}"
+            _row_init = row_init + 1 if has_headers else row_init
+            full_table_data = [
+                item
+                for item in self.data_list
+                if item["x"] in range(column_init, column_end + 1)
+                and item["y"] in range(_row_init, row_end + 1)
+            ]
+            _data_sorted = sorted(
+                full_table_data,
+                key=lambda d: d["y"],
+            )
+            grouped_data = [
+                tuple(group) for _, group in groupby(_data_sorted, key=lambda d: d["y"])
+            ]
 
-                    _doc[header] = value
-                    n += 1
-                _data.append(_doc)
+            _data = [
+                {header(x(item["x"])): item["value"] for item in col_axis}
+                for col_axis in grouped_data
+            ]
             possibles_data.append({"headers": list(_data[0].keys()), "data": _data})
 
         if row_oriented:
-            _data = []
-            c_init = column_init + 1 if headers else column_init
-            for col in range(c_init, column_end + 1):
-                _doc = {}
-                n = 0
-                for row in range(row_init, row_end + 1):
-                    value = list(
-                        filter(
-                            lambda item: item["x"] == row and item["y"] == col,
-                            self.data_list,
-                        )
-                    )[0]["value"]
-                    header = headers[n] if headers else f"column_{n}"
-                    print(header, value)
-                    _doc[header] = value
-                    n += 1
-                _data.append(_doc)
+            _col_init = column_init + 1 if has_headers else column_init
+            full_table_data = [
+                item
+                for item in self.data_list
+                if item["x"] in range(_col_init, column_end + 1)
+                and item["y"] in range(row_init, row_end + 1)
+            ]
+            _data_sorted = sorted(
+                full_table_data,
+                key=lambda d: d["x"],
+            )
+            grouped_data = [
+                tuple(group) for _, group in groupby(_data_sorted, key=lambda d: d["x"])
+            ]
+            _data = [
+                {header(y(item["y"])): item["value"] for item in col_axis}
+                for col_axis in grouped_data
+            ]
+
             possibles_data.append({"headers": list(_data[0].keys()), "data": _data})
 
         return possibles_data

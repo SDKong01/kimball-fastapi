@@ -15,8 +15,6 @@ class Metadata:
     target_columns: Optional[List[str]]
     dataset_type: Optional[str]
     data_source: Dict[str, str]
-    query: Optional[List[Dict[str, str]]]
-    db_params: Optional[Dict[str, str]]
     default_forecast: Optional[int]
     owner: Optional[str]
     tags: Optional[List[str]]
@@ -25,3 +23,11 @@ class Metadata:
     collection_name: Optional[str]
     stats: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = True
+    last_run: Optional[str] = None
+    query: Optional[Dict[str, Any]] = None
+    db_params: Optional[Dict[str, str]] = None
+    begin_date: Optional[str] = None
+    end_date: Optional[str] = None
+    dataset_keywords: Optional[List[str]] = None
+    fields_keywords: Optional[Dict[str, List[str]]] = None
+    values_keywords: Optional[Dict[str, Any]] = None

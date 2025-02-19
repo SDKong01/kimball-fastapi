@@ -5,12 +5,13 @@ from dataclass_type_validator import TypeValidationError
 # local imports
 from src.interface.data_source.serializers import (
     UploadFileResponseSerializer,
+    UploadandProcessFileResponseSerializer,
+    CreatedProccessedSerializer,
 )
 from src.application.data_source.services import DataSourceAppServices, CloneParamsDTO
 from src.interface.mixins import ErrorResponseSerializer
 from src.constants import TEMP_USER_ID
 from src.domain.data_source.exceptions import DBEngineNotSupported
-from src.interface.data_source.serializers import CloneDataSerializer
 
 
 @Controller(tag="Data Source", prefix="v1/data_source")
@@ -32,9 +33,10 @@ class DataSourceController:
         },
     )
     async def upload_file(self, file: UploadFile = File(...)):
-        response = self.service.upload_file(file=file)
-        response = UploadFileResponseSerializer(
-            success=True, data={"created": response}
+        r = self.service.upload_and_procces_file(file=file)
+        sheets, tables = r
+        response = UploadandProcessFileResponseSerializer(
+            success=True, data=CreatedProccessedSerializer(sheets=sheets, tables=tables)
         )
         return response
 

@@ -64,3 +64,5 @@ DB_OPERATORS = [
 existing_connections: Dict[str, Dict[str, Any]] = {}
 
 MAX_LIMIT_QUERY = 100
+
+DATE_COLUMN_NAME = "Calendar Date"

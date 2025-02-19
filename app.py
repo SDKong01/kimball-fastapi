@@ -19,10 +19,16 @@ from src.domain.connection.models import ConnParams
 
 from src.domain.connection.services import ConnServices
 from src.config import settings
+import logging
+
+
+logging.basicConfig(level=logging.INFO)
+# logging.getLogger("pymongo").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
 async def lifespan(app: App):
+
     # Stablis connection to app db
     db_params = ConnParams(
         engine="mongodb",
@@ -42,14 +48,6 @@ async def lifespan(app: App):
     )
 
     # Stablis connection to cache db
-    print(
-        {
-            "host": settings.REDIS_HOST,
-            "port": settings.REDIS_PORT,
-            "password": settings.REDIS_PASS,
-            "database": settings.REDIS_DB,
-        }
-    )
     cache_params = ConnParams(
         engine="redis",
         params={
@@ -59,7 +57,6 @@ async def lifespan(app: App):
             "db": settings.REDIS_DB,
         },
     )
-    print("cache params", cache_params)
     cache_connector = ConnServices.open_persistant_connection(cache_params)
     settings.cache_client_connector = cache_connector
     settings.cache_client_params = ConnParams(

@@ -46,3 +46,12 @@ class QueryResponseSerializer(BaseModel):
 
 class ConnParamsIDSerializer(BaseModel):
     id: str
+
+
+class HumanParseQuery(BaseModel):
+    dataset_keywords: List[str]
+    field_synonyms: Dict[str, List[str]] = None
+    value_synonyms: Dict[str, List[str]] = None
+    filters: List[Dict[str, Any]] = None
+    group_by: str = None
+    fields: List[Dict[str, Any]] = None

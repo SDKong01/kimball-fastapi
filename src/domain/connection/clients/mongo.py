@@ -43,7 +43,6 @@ class MongoClientConn(ConnClient):
             else f"{url}"
         )
         url = f"{url}{params['host']}"
-        # print("url", url)
 
         # params["port"] = int(params["port"])
         connection = MongoClient(url)

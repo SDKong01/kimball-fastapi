@@ -58,7 +58,6 @@ class QueryServices:
             if existing_query
             else Query(id=query.id, filters=[])
         )
-        print("existing query", existing_query)
         existing_query.filters = [Filter(**f) for f in existing_query.filters or []]
 
         return existing_query

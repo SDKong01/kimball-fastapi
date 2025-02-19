@@ -40,7 +40,6 @@ class MetadataServices:
         return date_grain
 
     def compute_columns(self, dataset) -> Dict[str, Any]:
-        # print("data_types", dataset.dtypes.to_list())
         date_column = None
         dataset_type = "other"
         matrix = MatrixExplorerTransformations(dataset)
@@ -94,26 +93,38 @@ class DatasetServices:
         )
         DatasetServices.system_db_manager().create(query_save_data)
 
-    def create(
+    @staticmethod
+    def retrive_by_collection(dataset_id: str, limit: int = None) -> QuerySet:
+        query = Query(
+            db=settings.testing_client, collection=dataset_id, filters={}, limit=limit
+        )
+        response = QuerySet(query=query, db_manager=DatasetServices.system_db_manager())
+        return response
+
+    def _rename_collection(self, temp_coll_name: str, new_coll_name: str) -> str:
+        query = Query(db=settings.testing_client)
+        DatasetServices.system_db_manager().update(
+            query=query,
+            rename_collection=True,
+            temp_coll_name=temp_coll_name,
+            new_coll_name=new_coll_name,
+        )
+        return new_coll_name
+
+    def create_from_temp_collection(
         self,
         description: str,
         dataset_name: str,
-        conn_params: ConnParams,
-        query: Query,
-        clone: bool = False,
+        date_column: str,
+        temp_dataset_id: str,
+        query: Query = None,
         tags: List[str] = None,
-        default_forecas: int = 6,
-        date_column: str = None,
-    ) -> Metadata:
-        # print("conn params", conn_params)
-        _db_manager = ConnServices.get_db_manager(conn_params)
-        queryset = QuerySet(query=query, db_manager=_db_manager)
-        data = queryset.limit(1).to_json(replace_date=True)
-        db_params = ConnServices.get_existing_conn(conn_params=conn_params)
-        full_db_params = {
-            "params": db_params.connection_params,
-            "engine": db_params.engine,
-        }
+    ):
+        # TODO: data is stored in memory, change by a lazy function in order to prevent a memory issue
+        data = DatasetServices.retrive_by_collection(dataset_id=temp_dataset_id)
+        collction_name = self._rename_collection(
+            temp_dataset_id, DatasetServices.parse_dataset_name(dataset_name)
+        )
         metadata = Metadata(
             dataset_id=str(uuid.uuid4()),
             dataset_description={
@@ -121,13 +132,13 @@ class DatasetServices:
                 "columns_count": len(data[0]),
             },
             dataset_name=dataset_name,
-            db_params=full_db_params,
+            db_params=None,
             query=query.__dict__,
             owner=settings.testing_client,
-            default_forecast=default_forecas,
-            is_cloned=clone,
+            default_forecast=6,
+            is_cloned=True,
             is_active=True,
-            collection_name=DatasetServices.parse_dataset_name(dataset_name),
+            collection_name=collction_name,
             date_grain=None,
             date_column=date_column,
             target_columns=None,
@@ -137,6 +148,49 @@ class DatasetServices:
             tags=tags,
         )
 
+        columns_data = MetadataServices().compute_columns(data[0])
+        for key, value in columns_data.items():
+            setattr(metadata, key, value)
+
+        if metadata.dataset_type == "time_series" and len(data) >= 2:
+            first_date, second_date = data[0].get(metadata.date_column), data[1].get(
+                metadata.date_column
+            )
+            first_date = DatasetServices.value_as_date(first_date)
+            second_date = DatasetServices.value_as_date(second_date)
+            date_grain = MetadataServices()._compute_date_grain(first_date, second_date)
+            metadata.date_grain = date_grain
+
+        df = pd.DataFrame(data)
+        df_stats = df.describe().to_dict()
+        descriptive_stats = {}
+        for key, value in df_stats.items():
+            descriptive_stats[key] = {
+                "max": value.get("max"),
+                "mean": value.get("mean"),
+                # "median": 21205813.17,
+                "min": value.get("min"),
+                "quartile_1": value.get("25%"),
+                "quartile_3": value.get("75%"),
+                # "skewness": 0.24271197007491002,
+                "std": value.get("std"),
+                # "kurtosis": -1.6196558791448692
+            }
+        metadata.stats = {
+            "descriptive_stats": descriptive_stats,
+        }
+
+        query_save_metadata = Query(
+            db=settings.db_name,
+            collection=SYS_METADATA_COLLECTION,
+            to_insert=metadata.__dict__.copy(),
+        )
+
+        DatasetServices.system_db_manager().create(query_save_metadata)
+        response = Metadata(**metadata.__dict__)
+        return response
+
+    def _data(self, queryset: QuerySet):
         def remove_bytes_and_lob(obj):
             if isinstance(obj, dict):
                 return {k: remove_bytes_and_lob(v) for k, v in obj.items()}
@@ -157,14 +211,62 @@ class DatasetServices:
             else:
                 return obj
 
+        data = queryset.to_json(replace_date=True)
         data = remove_bytes_and_lob(data)
+        return data
+
+    def create(
+        self,
+        description: str,
+        dataset_name: str,
+        conn_params: ConnParams,
+        query: Query,
+        clone: bool = False,
+        tags: List[str] = None,
+        default_forecas: int = 6,
+    ) -> Metadata:
+        _db_manager = ConnServices.get_db_manager(conn_params)
+        queryset = QuerySet(query=query, db_manager=_db_manager).limit(1)
+        data = self._data(queryset=queryset)
+
+        db_params = ConnServices.get_existing_conn(conn_params=conn_params)
+        full_db_params = {
+            "params": db_params.connection_params,
+            "engine": db_params.engine,
+        }
+        metadata = Metadata(
+            dataset_id=str(uuid.uuid4()),
+            dataset_description={
+                "rows_count": len(data),
+                "columns_count": len(data[0]),
+            },
+            dataset_name=dataset_name,
+            db_params=full_db_params,
+            query=query.__dict__,
+            owner=settings.testing_client,
+            default_forecast=default_forecas,
+            is_cloned=clone,
+            is_active=True,
+            collection_name=DatasetServices.parse_dataset_name(dataset_name),
+            date_grain=None,
+            date_column=query.date_column,
+            target_columns=None,
+            dataset_type=None,
+            data_source=None,
+            description=description,
+            tags=tags,
+        )
 
         columns_data = MetadataServices().compute_columns(data)
         for key, value in columns_data.items():
             setattr(metadata, key, value)
 
         if metadata.dataset_type == "time_series":
-            data = queryset.order_by(metadata.date_column).limit(2).to_json()
+            data = (
+                queryset.order_by(metadata.date_column)
+                .limit(2)
+                .to_json(replace_date=True)
+            )
             first_date = data[0].get(metadata.date_column)
             first_date = DatasetServices.value_as_date(first_date)
             if len(data) > 1:
@@ -175,8 +277,9 @@ class DatasetServices:
                 )
                 metadata.date_grain = date_grain
 
-        data = QuerySet(query=query, db_manager=_db_manager).to_json()
-        data = remove_bytes_and_lob(data)
+        queryset.limit(None)
+        data = self._data(queryset=queryset)
+
         df = pd.DataFrame(data)
         df_stats = df.describe().to_dict()
         descriptive_stats = {}
@@ -202,7 +305,7 @@ class DatasetServices:
         ]
 
         query_save_metadata = Query(
-            db=settings.testing_client,
+            db=settings.db_name,
             collection=SYS_METADATA_COLLECTION,
             to_insert=metadata_dict,
         )
@@ -210,12 +313,9 @@ class DatasetServices:
         response = Metadata(**metadata.__dict__.copy())
 
         DatasetServices.system_db_manager().create(query_save_metadata)
-        # print("df describe", df.describe())
-        # print("df describe as dict", df.describe().to_dict())
-        # print("data", data.__class__)
         if clone:
             query_save_data = Query(
-                db=settings.testing_client,
+                db=settings.db_name,
                 collection=metadata.collection_name,
                 to_insert=data,
             )
@@ -239,11 +339,16 @@ class DatasetServices:
         metadata = Metadata(**metadata)
 
         _db_manager = DatasetServices.system_db_manager()
+        filters = (
+            [Filter(**f) for f in metadata.query.get("filters", [])]
+            if getattr(metadata, "query", None)
+            else []
+        )
 
         _query = Query(
             db=settings.testing_client,
             collection=metadata.collection_name,
-            filters=[Filter(**f) for f in metadata.query["filters"]],
+            filters=filters,
         )
 
         if not metadata.is_cloned or force_query:

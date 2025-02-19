@@ -4,7 +4,7 @@ import csv
 import json
 import zipfile
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from tempfile import SpooledTemporaryFile, TemporaryFile
 from starlette.datastructures import UploadFile
 from dataclasses import dataclass
@@ -17,6 +17,10 @@ from src.domain.data_source.services import DataSourceServices
 from src.constants import MONGO, POSTGRES, DB_ENGINES
 from src.domain.connection.models import (
     ConnParams,
+)
+from src.domain.dataset.services import DatasetServices
+from src.domain.discovery_engine.data_transformations.matrix_explorer import (
+    MatrixExplorerTransformations,
 )
 
 
@@ -70,3 +74,27 @@ class CloneParamsDTO:
 class DataSourceAppServices:
     def upload_file(self, file: UploadFile) -> List[str]:
         return DataSourceServices.file_services().upload_file(file=file)
+
+    def upload_and_procces_file(self, file: UploadFile) -> List[List[str]]:
+        sheets = DataSourceServices.file_services().upload_file(file=file)
+        parsed_sheets = []
+        temp_tables = []
+
+        data_services = DatasetServices()
+        for s in sheets:
+            data = s.get("data")
+            # print(data)
+            matrix_transformer = MatrixExplorerTransformations(data)
+            response = matrix_transformer.process_matrix(True)
+            sheet_name = s.get("sheet").replace("temp_", "")
+            parsed_sheets.append(sheet_name)
+            n = 0
+            for r in response:
+                col_name = f"temp_{sheet_name}_{n}"
+                r_data = r.get("data")
+                data_services.create_only_data(data=r_data, collection_name=col_name)
+                col_name = col_name.replace("temp_", "")
+                temp_tables.append(col_name)
+                n += 1
+
+        return parsed_sheets, temp_tables

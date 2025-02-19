@@ -125,6 +125,32 @@ class DiscoveryEngineController:
         operation_id="matrixExploration",
         status_code=status.HTTP_200_OK,
     )
-    async def matrix_exploration(self, db: str, coll: str):
-        response = self.service.matrix_exploration(db, coll)
+    async def matrix_exploration(self, coll: str, has_headers: bool = True):
+        response = self.service.matrix_exploration(coll, has_headers)
+        return response
+
+    @Get(
+        "/matrix_exploration_save",
+        summary="Matrix Exploration and save",
+        description="Matrix Exploration and save",
+        operation_id="matrixExploration and save",
+        status_code=status.HTTP_200_OK,
+    )
+    async def matrix_exploration_save(self, coll: str, has_headers: bool = True):
+        response = self.service.matrix_exploration(coll, has_headers, True)
+        return response
+
+    @Get(
+        "/excel_exploration",
+        summary="Excel Exploration",
+        description="Excel Exploration",
+        operation_id="excelExploration",
+        status_code=status.HTTP_200_OK,
+    )
+    async def excel_exploration(
+        self, sheet_name: str, cells_range: str = None, has_headers: bool = True
+    ):
+        response = self.service.excel_exploration(
+            sheet_name=sheet_name, cells_range=cells_range, has_headers=has_headers
+        )
         return response

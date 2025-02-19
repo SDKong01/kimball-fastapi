@@ -15,9 +15,15 @@ class DatasetAppServices:
         self,
         dataset_id: str,
         force_query: bool = False,
+        direct_by_collection: bool = False,
+        limit: int = None,
     ):
-        response = DatasetServices().retrieve_as_queryset(
-            dataset_id=dataset_id, force_query=force_query
+        response = (
+            DatasetServices().retrive_by_collection(dataset_id=dataset_id, limit=limit)
+            if direct_by_collection
+            else DatasetServices().retrieve_as_queryset(
+                dataset_id=dataset_id, force_query=force_query
+            )
         )
         return response.to_json()
 
@@ -52,6 +58,25 @@ class DatasetAppServices:
             clone=clone,
             tags=tags,
             default_forecas=default_forecas,
+        )
+        return response
+
+    def create_from_temp_collection(
+        self,
+        description: str,
+        dataset_name: str,
+        date_column: str,
+        temp_dataset_id: str,
+        # query: Query = None,
+        tags: List[str] = None,
+    ):
+        response = DatasetServices().create_from_temp_collection(
+            description=description,
+            dataset_name=dataset_name,
+            date_column=date_column,
+            temp_dataset_id=temp_dataset_id,
+            # query=query,
+            tags=tags,
         )
         return response
 

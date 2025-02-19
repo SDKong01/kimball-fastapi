@@ -60,14 +60,6 @@ class ConnParams:
             )
 
 
-@dataclass_validate
-@dataclass(frozen=True)
-class ConnectionEngine:
-    id: Union[str, uuid.UUID]
-    engine: str
-    conn: Any
-
-
 class ConnClient:
     def __init__(self, conn_params: ConnParams, *args, **kwargs):
         self.conn_params = conn_params
@@ -123,7 +115,6 @@ class ConnClient:
                 ),
             )
             if not all(is_valid):
-                # print("key", key)
                 raise ConnectionMissinParams(
                     item="conn_params",
                     detail=f"Wrong value for {key} required parameter",
@@ -276,18 +267,3 @@ class DBManager(ABC):
     def to_pandas(self, query, orient: str = "record", **kwargs) -> pd.DataFrame:
         data = self.to_json(query=query, orient=orient, **kwargs)
         return pd.DataFrame(data, columns=data[0].keys())
-
-
-class SingleConnFactory(ABC):
-    @property
-    @abstractmethod
-    def instances(self) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def __new__(cls, *args, **kwargs) -> Any:
-        pass
-
-    @abstractmethod
-    def __delf__(cls) -> None:
-        pass

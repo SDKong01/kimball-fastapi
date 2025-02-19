@@ -96,6 +96,8 @@ class XLSXProcesor(ProcesorBase):
                     "y": self._excel_columns().index(
                         self.split_numbers_and_letters(cell.coordinate)[1]
                     ),
+                    "column": self.split_numbers_and_letters(cell.coordinate)[1],
+                    "row": int(self.split_numbers_and_letters(cell.coordinate)[0]),
                     "value": cell.value,
                     "id": cell.coordinate,
                 }
@@ -163,6 +165,6 @@ class FileServices:
             data_services.create_only_data(
                 data=dt.data, collection_name=dt.collection_name
             )
-            created.append(dt.collection_name)
+            created.append({"sheet": dt.collection_name, "data": dt.data})
 
         return created

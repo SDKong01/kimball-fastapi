@@ -2,7 +2,7 @@ import uuid
 from typing import List, Optional, Union, Dict, Any, Callable
 from abc import ABC, abstractmethod
 from dataclass_type_validator import dataclass_validate
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from src.constants import DB_ENGINES, existing_connections, DB_OPERATORS, EQUAL
 from src.domain.connection.exceptions import (
     ConnectionMissinParams,
@@ -33,8 +33,8 @@ class Filter:
 
 @dataclass()
 class Query:
-    id: Optional[str] = None
-    filters: List[Filter] = None
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    filters: List[Filter] = field(default_factory=list)
     exclude: Optional[List[Filter]] = None
     order_by: Optional[str] = None
     group_by: Optional[str] = None

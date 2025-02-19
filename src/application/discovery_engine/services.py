@@ -1,6 +1,8 @@
+import re
 from typing import Optional
 from dataclasses import dataclass
 from dataclass_type_validator import dataclass_validate
+from src.domain.dataset.services import DatasetServices
 
 # from src.domain.discovery_engine.models import PGDiscovery
 # from src.infrastructure.pg_manager.pg_connection import PostgresConnection
@@ -30,12 +32,24 @@ class DiscoveryEngineAppServices:
     def __init__(self) -> None:
         pass
 
-    def matrix_exploration(self, db: str, coll: str):
+    def matrix_exploration(self, coll: str, has_headers: bool, save: bool = False):
         data_services = DatasetServices()
-        data = data_services.retrieve_as_json(db)[:]
+        data = data_services.retrieve_as_json(coll)[:]
         matrix_explorer = MatrixExplorerTransformations(data)
-        response = matrix_explorer.process_matrix()
-        # print("response", response)
+        response = matrix_explorer.process_matrix(has_headers)
+        data_services = DatasetServices()
+
+        if save:
+            n = 0
+            _response = []
+            for r in response:
+                col_name = f"temp__{n}"
+                data = r.get("data")
+                data_services.create_only_data(data=data, collection_name=col_name)
+                _response.append(col_name)
+                n += 1
+                return _response
+
         return response
         # pass
         # our_manager = ConnServices.get_factory().get_db_manager(
@@ -46,6 +60,20 @@ class DiscoveryEngineAppServices:
         # queryset.db_manager.db = db
         # data = queryset.filter({})
         # data = list(data)[:]
+
+    def _validate_cell_range(self, str):
+        excel_regex = r'^[A-Z]{1,3}[1-9][0-9]*:[A-Z]{1,3}[1-9][0-9]*$'
+        return bool(re.match(excel_regex, str))
+
+    def excel_exploration(
+        self, sheet_name: str, cells_range: str = None, has_headers: bool = True
+    ):
+        data_services = DatasetServices()
+        data = data_services.retrieve_as_json(sheet_name)[:]
+        matrix_explorer = MatrixExplorerTransformations(data)
+        if cells_range and not self._validate_cell_range(cells_range):
+            raise ("Wrong excel cells range")
+        return matrix_explorer.get_raw_data_by_range(cell_range=cells_range)
 
     # def get_schemas(self, conn_params: ConnectionDTO) -> list:
     #     db_conn = PostgresConnection(connection_id=conn_params.conn_id)
@@ -69,14 +97,7 @@ class DiscoveryEngineAppServices:
     #     "database": "kimballDB",
     #     "username": "postgres",
     #     "password": "xCf4nRcFy5fvYOH",
-    # }
-
-    # # TODO - Implement the following method
-    # def get_col_characteristics(self, conn_params: ConnectionDTO) -> list:
-    #     db_conn = PostgresConnection(connection_id=conn_params.conn_id)
-    #     conn = PGDiscovery(db_conn=db_conn)
-    #     return conn.get_columns_by_table(conn_params.table, conn_params.dbschema)
-
+    # }>
     # def create_engine(
     #     self, engine_params: EngineDTO, conn_params: ConnectionDTO
     # ) -> EngineDTO:

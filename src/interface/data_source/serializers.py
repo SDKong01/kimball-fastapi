@@ -17,8 +17,17 @@ class CreatedSerializer(BaseModel):
     created: List[str]
 
 
+class CreatedProccessedSerializer(BaseModel):
+    sheets: List[str]
+    tables: List[str]
+
+
 class UploadFileResponseSerializer(BaseResponseMixin):
     data: CreatedSerializer
+
+
+class UploadandProcessFileResponseSerializer(BaseResponseMixin):
+    data: CreatedProccessedSerializer
 
 
 class CloneDataSerializer(BaseModel):

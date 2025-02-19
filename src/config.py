@@ -23,9 +23,7 @@ class AppSetting(BaseSettings):
     MONGO_DB: str = getenv('MONGO_DB', 'kimball')
     MONGO_USER: str = getenv('MONGO_USER', '')
     MONGO_PASS: str = getenv('MONGO_PASS', '')
-    MONGO_IS_ATLAS_CLUSTER: bool = literal_eval(
-        getenv('MONGO_IS_ATLAS_CLUSTER', "False")
-    )
+    MONGO_IS_ATLAS_CLUSTER: bool = False
 
     # Redis settings
     REDIS_HOST: str = getenv('REDIS_HOST', 'localhost')
@@ -69,6 +67,8 @@ class AppSetting(BaseSettings):
     cache_client_params: Any = None
 
     testing_client: str = getenv('TESTING_CLIENT', 'test_client')
+
+    db_name: str = getenv('DB_NAME', testing_client)
 
 
 settings = AppSetting()

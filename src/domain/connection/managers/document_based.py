@@ -59,7 +59,6 @@ class DocumentBasedManager(DBManager):
     def to_json(
         self, query=Query, orient: str = "records", **kwargs
     ) -> List[Dict[str, Any]]:
-        print("query", query)
         db = query.db
         collection = query.collection
         parsed_query = self._kwargs_to_query(query=query, **kwargs)
@@ -86,11 +85,11 @@ class DocumentBasedManager(DBManager):
 
         self.conn[db][collection].insert_many(query_statement)
 
-    def raw_query(self, query):
-        with self.conn.cursor() as cursor:
-            cursor.execute(query)
-            response = list(cursor.fetchall())
-
+    def raw_query(self, *args, **kwargs):
+        db = kwargs.get("db")
+        collection = kwargs.get("collection")
+        # query = args[0]
+        response = list(self.conn[db][collection].find(*args))
         return response
 
     def list_collections(self, *args, **kwargs):
@@ -101,3 +100,12 @@ class DocumentBasedManager(DBManager):
     def list_databases(self, *args, **kwargs) -> List[str]:
         dbs = list(self.conn.list_database_names())
         return dbs
+
+    def update(self, query=Query, *args, **kwargs):
+        db = query.db
+        if not [kwargs.get("rename_collection")]:
+            super().update(*args, **kwargs)
+        temp_coll_name = kwargs.get("temp_coll_name")
+        new_coll_name = kwargs.get("new_coll_name")
+
+        self.conn[db][temp_coll_name].rename(new_coll_name)
