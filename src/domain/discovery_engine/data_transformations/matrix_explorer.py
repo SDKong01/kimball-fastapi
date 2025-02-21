@@ -21,16 +21,34 @@ class CellType:
     is_null: Optional[bool]
     is_empty: Optional[bool]
 
+    def __repr__(self):
+        types = []
+        if self.is_int:
+            types.append("int")
+        if self.is_float:
+            types.append("float")
+        if self.is_bool:
+            types.append("bool")
+        if self.is_date:
+            types.append("date")
+        if self.is_str:
+            types.append("str")
+        if self.is_null:
+            types.append("null")
+        if self.is_empty:
+            types.append("empty")
+        return f"CellType({', '.join(types)})"
+
 
 class CellTypeFactory:
     def __init__(self, value: Any):
         self.value = value
 
     def clean_is_empty(self, value: str) -> bool:
-        null_values = ["", " ", "null", "nan", "none", "None"]
-        if value and str(value).lower() in null_values:
-            return None
-        return value
+        null_values = ["", " ", "null", "nan", "none"]
+        if value.lower() in null_values:
+            return True
+        return False
 
     def _is_date(self) -> bool:
         date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
@@ -40,7 +58,7 @@ class CellTypeFactory:
 
     def compute(self) -> CellType:
         value = str(self.value).strip()
-        is_empty = bool(value and self.clean_is_empty(str(value)))
+        is_empty = self.clean_is_empty(value)
 
         cell_type = CellType(
             is_int=value.isdigit(),
@@ -145,6 +163,7 @@ class MatrixExplorerTransformations:
     #         is_col_oriented: True
 
     def orientation(self, x: int, y: int, x_end: int, y_end: int) -> Tuple[int, int]:
+        print()
         full_table_data = [
             Cell(
                 x=item["x"],
@@ -162,12 +181,23 @@ class MatrixExplorerTransformations:
         )
 
         prev_x, prev_y = None, None
-        prev_x_cells: List[CellType] = []
-        prev_y_cells: List[CellType] = []
+        # prev_x_cells: List[CellType] = []
+        # prev_y_cells: List[CellType] = []
+
+        prev_x_cells: List[Cell] = []
+        prev_y_cells: List[Cell] = []
+
         is_x_oriented, is_y_oriented = True, True
 
-        def ignore_nones(x: CellType, y: Cell) -> bool:
-            return x == y if not y.celltype.is_null else True
+        def ignore_nones(
+            x: CellType, y: Cell, to_print: bool = False, _x: Any = None
+        ) -> bool:
+            if to_print:
+                print("**************** x *********************")
+                print(_x, x)
+                print("**************** y *********************")
+                print(y)
+            return x == y.celltype if not y.celltype.is_null else True
 
         for cell in data_sorted:
             # Table begin
@@ -181,19 +211,33 @@ class MatrixExplorerTransformations:
                 print("not orientation found")
                 break
 
-            is_x_different = cell.x != prev_x
-            is_y_differente = cell.y != prev_y
+            is_y_different = cell.x != prev_x
+            is_x_different = cell.y != prev_y
 
-            if is_x_different and is_x_oriented:
-                is_x_oriented = all(ignore_nones(p, cell) for p in prev_x_cells)
+            if is_y_different and is_x_different:
                 prev_x_cells = []
-
-            if is_y_differente and is_y_oriented:
-                is_y_oriented = all(ignore_nones(p, cell) for p in prev_y_cells)
                 prev_y_cells = []
 
-            prev_x_cells.append(cell.celltype)
-            prev_y_cells.append(cell.celltype)
+            if is_x_different and is_x_oriented:
+                is_x_oriented = all(
+                    ignore_nones(p.celltype, cell) for p in prev_x_cells
+                )
+                prev_x_cells = []
+
+            if is_y_different and is_y_oriented:
+                print(
+                    "y different",
+                    list(prev_y_cells),
+                )
+                print()
+                is_y_oriented = all(
+                    ignore_nones(p.celltype, cell, True, (p.x, p.y))
+                    for p in prev_y_cells
+                )
+                prev_y_cells = []
+
+            prev_x_cells.append(cell)
+            prev_y_cells.append(cell)
             prev_x, prev_y = cell.x, cell.y
 
         return is_x_oriented, is_y_oriented

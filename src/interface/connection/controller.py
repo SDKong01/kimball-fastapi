@@ -119,6 +119,44 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
 
+    @Post(
+        "/connection-test",
+        summary="Test connection",
+        description="Receives the connection parameters from the frontend into the backend in the proper serialized format.",
+        operation_id="connection_test",
+        status_code=status.HTTP_200_OK,
+        responses={
+            200: {"success": True, "data": {True}},
+            400: {
+                "success": False,
+                "error": {
+                    "item": "connection",
+                    "detail": "Invalid connection parameters",
+                },
+            },
+        },
+    )
+    async def connection_test(self, params: ConnectionParams):
+        try:
+            dict_params = params.params.dict()
+            _params = ConnParams(engine=params.engine, params=dict_params)
+            response = self.service.connect_test(_params)
+            return JSONResponse(content={"success": True, "data": {response}})
+        except DBEngineNotSupported as e:
+            response = ErrorResponseSerializer(
+                success=False, error={"item": e.item, "detail": e.detail}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_418_IM_A_TEAPOT, detail=response.dict()
+            )
+        except TypeValidationError as e:
+            response = ErrorResponseSerializer(
+                success=False, error={"item": "db-connection", "detail": str(e)}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
+            )
+
     @Get(
         "/dbs",
         summary="List databases",

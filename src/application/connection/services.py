@@ -27,6 +27,14 @@ class ConnectionAppServices:
         )
         return connector.id
 
+    def connect_test(self, stablis_conn_params: ConnParams) -> str:
+        try:
+            ConnServices.stablish_temporal_conn(stablis_conn_params)
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
     def list_base_schemas(
         self, conn_params: ConnParams, _schema: str, **kwargs
     ) -> List[str]:
