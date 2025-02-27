@@ -11,6 +11,7 @@ from src.domain.connection.models import (
 from src.constants import existing_connections, MONGO, ORACLE, POSTGRES, REDIS
 from src.domain.connection.clients.oracle import OracleClientConn
 from src.domain.connection.managers.sql import SQLManager
+from src.domain.connection.managers.dim_sql import SQLManager as DimSQLManager
 from src.domain.connection.managers.oracle_sql import OracleManager
 from src.domain.connection.clients.postgresql import PostgresClientConn
 from src.domain.connection.clients.mongo import MongoClientConn
@@ -74,6 +75,13 @@ class ConnServices:
     def get_existing_connector(conn_params: ConnParams) -> ConnectionParams:
         conn: ConnectionParams = existing_connections.get(conn_params.id)
         return conn
+
+    @staticmethod
+    def get_pivot_db_manager(conn_params: ConnParams) -> DBManager:
+        client = PostgresClientConn(conn_params=conn_params)
+        client.conn(save_connection=True)
+        db_manager: DBManager = DimSQLManager(connection=client)
+        return db_manager
 
     @staticmethod
     def open_and_db_manager(conn_params: ConnParams) -> DBManager:

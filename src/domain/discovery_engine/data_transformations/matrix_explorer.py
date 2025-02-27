@@ -87,9 +87,12 @@ class MatrixExplorerTransformations:
         self.cell_profiles: Dict[str, Dict[str, str]] = {}
         self.data_map = defaultdict(lambda: defaultdict(lambda: None))
         self.excel_data_map = defaultdict(lambda: defaultdict(lambda: None))
-        for item in self.data_list:
-            self.data_map[item["y"]][item["x"]] = item["value"]
-            self.excel_data_map[item["column"]][item["row"]] = item["value"]
+        try:
+            for item in self.data_list:
+                self.data_map[item["y"]][item["x"]] = item["value"]
+                self.excel_data_map[item["column"]][item["row"]] = item["value"]
+        except Exception as e:
+            pass
 
     @dataclass
     class CellProfile:

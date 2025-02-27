@@ -17,12 +17,14 @@ class DatasetAppServices:
         force_query: bool = False,
         direct_by_collection: bool = False,
         limit: int = None,
+        query_id: str = None,
     ):
+
         response = (
             DatasetServices().retrive_by_collection(dataset_id=dataset_id, limit=limit)
             if direct_by_collection
-            else DatasetServices().retrieve_as_queryset(
-                dataset_id=dataset_id, force_query=force_query
+            else DatasetServices().retrive_dim_version(
+                dataset_id=dataset_id, force_query=force_query, query_id=query_id
             )
         )
         return response.to_json()
@@ -85,10 +87,25 @@ class MetadataAppServices:
     def __init__(self):
         pass
 
-    def retrieve(
-        self,
-    ):
-        pass
+    def retrieve(self, dataset_id: str = None) -> Metadata:
+        metadata = MetadataServices.retrieve(dataset_id=dataset_id)
+        return metadata
+
+    def available_fields(
+        self, dataset_id: str = None, query_id: str = None
+    ) -> List[str]:
+        fields = MetadataServices.available_fields(
+            dataset_id=dataset_id, query_id=query_id
+        )
+        return fields
+
+    def available_groups(
+        self, dataset_id: str = None, query_id: str = None
+    ) -> List[str]:
+        fields = MetadataServices.available_groups(
+            dataset_id=dataset_id, query_id=query_id
+        )
+        return fields
 
     def update(
         self,

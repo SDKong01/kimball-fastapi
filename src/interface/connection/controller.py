@@ -17,6 +17,7 @@ from src.interface.mixins import ErrorResponseSerializer
 from src.constants import MONGO, DB_ENGINES, APPLICATION_ENGINES
 from src.domain.data_source.exceptions import DBEngineNotSupported
 from src.domain.connection.models import ConnParams
+from src.domain.connection.exceptions import ConnectionMissinParams
 from .serializers import EngineAvailables
 
 
@@ -118,6 +119,13 @@ class ConnectionController:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
+        except ConnectionMissinParams as e:
+            response = ErrorResponseSerializer(
+                success=False, error={"item": "db-engine-invalid", "detail": e.detail}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
+            )
 
     @Post(
         "/connection-test",
@@ -141,7 +149,7 @@ class ConnectionController:
             dict_params = params.params.dict()
             _params = ConnParams(engine=params.engine, params=dict_params)
             response = self.service.connect_test(_params)
-            return JSONResponse(content={"success": True, "data": {response}})
+            return JSONResponse(content={"success": True})
         except DBEngineNotSupported as e:
             response = ErrorResponseSerializer(
                 success=False, error={"item": e.item, "detail": e.detail}
@@ -152,6 +160,13 @@ class ConnectionController:
         except TypeValidationError as e:
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-connection", "detail": str(e)}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
+            )
+        except ConnectionMissinParams as e:
+            response = ErrorResponseSerializer(
+                success=False, error={"item": "db-engine-invalid", "detail": e.detail}
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()

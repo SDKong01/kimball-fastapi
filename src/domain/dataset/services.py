@@ -3,19 +3,22 @@ import uuid
 import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.parser import parse
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
 from src.domain.connection.models import DBManager, ConnParams
 from src.domain.connection.services import ConnServices
-from src.domain.queryset.models import Query, Filter
-from src.domain.queryset.services import QuerySet
+from src.domain.queryset.models import Query, Filter, DimmensionalStructure
+from src.domain.queryset.services import QuerySet, QueryServices
 from src.domain.dataset.models import Metadata
-
 from src.domain.discovery_engine.data_transformations.matrix_explorer import (
     MatrixExplorerTransformations,
 )
 
 from src.config import settings
 from src.constants import EQUAL, SYS_METADATA_COLLECTION
+from src.domain.discovery_engine.data_transformations.matrix_explorer import (
+    CellTypeFactory,
+)
 
 
 class MetadataServices:
@@ -46,7 +49,7 @@ class MetadataServices:
         available_columns = list(dataset[0].keys())
         for c in available_columns:
             value = dataset[0].get(c)
-            cell_type = matrix.get_value_type(value)
+            cell_type = CellTypeFactory(value).compute()
             if cell_type.is_date:
                 date_column = c
                 dataset_type = "time_series"
@@ -58,7 +61,70 @@ class MetadataServices:
             "target_columns": available_columns,
         }
 
-        pass
+    @staticmethod
+    def retrieve(dataset_id: str = None) -> List[Metadata]:
+        system_db_manager = ConnServices.get_db_manager(
+            conn_params=settings.db_client_params
+        )
+        filters = (
+            [Filter(field="dataset_id", operator=EQUAL, value=dataset_id)]
+            if dataset_id
+            else []
+        )
+        query = Query(
+            db=settings.testing_client,
+            collection=SYS_METADATA_COLLECTION,
+            filters=filters,
+        )
+        metadata = system_db_manager.retrieve(query=query)
+        metadata = [Metadata(**m) for m in metadata]
+        return metadata
+
+    @staticmethod
+    def available_fields(dataset_id: str, query_id: str = None) -> QuerySet:
+        metadata = MetadataServices.retrieve(dataset_id=dataset_id)[0]
+
+        query_obj = Query(id=query_id)
+        query = QueryServices().retrieve(query=query_obj)
+        query.schema = metadata.query.get("schema", None)
+        query.table = metadata.query.get("table", None)
+        query.db = metadata.query.get("db", None)
+        query.date_column = metadata.date_column
+
+        _conn_params = ConnParams(**metadata.db_params)
+        db_manager = ConnServices.get_pivot_db_manager(conn_params=_conn_params)
+        _dim_structure = (
+            DimmensionalStructure(**metadata.dimensional_structure)
+            if metadata.dimensional_structure
+            else None
+        )
+        fields = getattr(db_manager, "list_fields")(
+            query=query, dim_structure=_dim_structure
+        )
+
+        return fields
+
+    @staticmethod
+    def available_groups(dataset_id: str, query_id: str = None) -> QuerySet:
+        metadata = MetadataServices.retrieve(dataset_id=dataset_id)[0]
+
+        query_obj = Query(id=query_id)
+        query = QueryServices().retrieve(query=query_obj)
+        query.schema = metadata.query.get("schema", None)
+        query.table = metadata.query.get("table", None)
+        query.db = metadata.query.get("db", None)
+        query.date_column = metadata.date_column
+
+        _conn_params = ConnParams(**metadata.db_params)
+        db_manager = ConnServices.get_pivot_db_manager(conn_params=_conn_params)
+        _dim_structure = (
+            DimmensionalStructure(**metadata.dimensional_structure)
+            if metadata.dimensional_structure
+            else None
+        )
+        fields = getattr(db_manager, "list_group_by")(dim_structure=_dim_structure)
+
+        return fields
 
 
 class DatasetServices:
@@ -323,20 +389,31 @@ class DatasetServices:
         return response
 
     @staticmethod
-    def retrieve_as_queryset(dataset_id: str, force_query: bool = False) -> QuerySet:
+    def retrive_dim_version(
+        dataset_id: str, force_query: bool = False, query_id: str = None
+    ) -> QuerySet:
+        metadata = MetadataServices.retrieve(dataset_id=dataset_id)[0]
 
-        _filter = Filter(field="dataset_id", operator=EQUAL, value=dataset_id)
-        # print("db in retrieve", settings.testing_client)
-        query = Query(
-            db=settings.testing_client,
-            collection=SYS_METADATA_COLLECTION,
-            filters=[
-                _filter,
-            ],
+        query_obj = Query(id=query_id)
+        query = QueryServices().retrieve(query=query_obj)
+        query.schema = metadata.query.get("schema", None)
+        query.table = metadata.query.get("table", None)
+        query.db = metadata.query.get("db", None)
+        query.date_column = metadata.date_column
+
+        _conn_params = ConnParams(**metadata.db_params)
+        db_manager = ConnServices.get_pivot_db_manager(conn_params=_conn_params)
+
+        response = QuerySet(
+            query=query,
+            db_manager=db_manager,
+            dimensional_structure=metadata.dimensional_structure,
         )
-        metadata = DatasetServices.system_db_manager().retrieve(query=query)[0]
-        # print("metadata", metadata)
-        metadata = Metadata(**metadata)
+        return response
+
+    @staticmethod
+    def retrieve_as_queryset(dataset_id: str, force_query: bool = False) -> QuerySet:
+        metadata = MetadataServices.retrieve(dataset_id=dataset_id)[0]
 
         _db_manager = DatasetServices.system_db_manager()
         filters = (

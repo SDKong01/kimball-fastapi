@@ -31,17 +31,16 @@ class QuerySetController:
         description="Create queryset.",
         operation_id="create_queryset",
     )
-    async def create(self, query: QueryCreateSerializer):
-        _query = Query(
-            filters=[],
-            db=query.db,
-            collection=query.collection,
-            table=query.table,
-            schema=query.db_schema,
-        )
-        response = self.service.create(query=_query, is_cached=query.is_cached)
+    async def create(self, params: QueryCreateSerializer):
+        params_dict = params.dict()
+        params_dict["schema"] = params_dict.pop("db_schema")
+        params_dict.pop("is_cached")
+        query = Query(**params_dict)
+        response = self.service.create(query=query, is_cached=False)
         response = QueryResponseSerializer(**response.__dict__)
-        return JSONResponse(content={"success": True, "result": response.dict()})
+        return JSONResponse(
+            content={"success": True, "result": response.dict()}, status_code=201
+        )
 
     @Patch(
         "/",

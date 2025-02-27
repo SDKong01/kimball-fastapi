@@ -3,15 +3,89 @@ from fastapi import UploadFile, File, status, Response, HTTPException
 from fastapi.responses import JSONResponse
 from dataclass_type_validator import TypeValidationError
 
-from src.application.dataset.services import DatasetAppServices
+from src.application.dataset.services import DatasetAppServices, MetadataAppServices
 from src.interface.dataset.serializers import (
     DatasetCreateSerializer,
     DatasetCreateFromTempSerializer,
+    MetadataResponseSerializer,
+    MetadataListResponseSerializer,
 )
 
 from src.domain.connection.models import ConnParams
 from src.domain.queryset.models import Query
 from src.config import settings
+
+
+@Controller(tag="Metadata", prefix="v1/metadata")
+class MetadataController:
+    service: MetadataAppServices = Depends(MetadataAppServices)
+
+    @Get(
+        "/",
+        summary="List metadata",
+        description="List metadata.",
+        operation_id="list_metadata",
+    )
+    async def list_metadata(self):
+        response = self.service.retrieve()
+        serialized_response = [
+            MetadataListResponseSerializer(**metadata.__dict__).dict()
+            for metadata in response
+        ]
+        return JSONResponse(content={"success": True, "result": serialized_response})
+
+    @Get(
+        "/{dataset_id}",
+        summary="Retrieve dataset",
+        description="Retrieve dataset.",
+        operation_id="retrieve_dataset",
+    )
+    async def retrieve(self, dataset_id: str, fields: str = None):
+        response = self.service.retrieve(dataset_id=dataset_id)
+        if not response:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Dataset with id {dataset_id} not found",
+            )
+        serialized_response = MetadataResponseSerializer(**response[0].__dict__).dict()
+        if fields:
+            fields_list = fields.split(",")
+            response = {
+                key: serialized_response[key]
+                for key in fields_list
+                if key in serialized_response
+            }
+        else:
+            response = serialized_response
+        return JSONResponse(content={"success": True, "result": response})
+
+    @Get(
+        "/{dataset_id}/available_query_fields",
+        summary="Retrieve available query fields",
+        description="Retrieve available query fields.",
+        operation_id="available_query_fields",
+    )
+    async def available_query_fields(self, dataset_id: str, query_id: str = None):
+        response = self.service.available_fields(
+            dataset_id=dataset_id, query_id=query_id
+        )
+        return JSONResponse(content={"success": True, "result": response})
+
+    @Get(
+        "/available_groups",
+        summary="Retrieve dataset",
+        description="Retrieve dataset.",
+        operation_id="available_goup_fields",
+    )
+    async def available_groups(self, dataset_id: str, query_id: str = None):
+        response = self.service.available_groups(
+            dataset_id=dataset_id, query_id=query_id
+        )
+        # serialized_response = [
+        #     MetadataResponseSerializer(**metadata.__dict__).dict()
+        #     for metadata in response
+        # ]
+        return JSONResponse(content={"success": True, "result": response})
 
 
 @Controller(tag="Dataset", prefix="v1/dataset")
@@ -43,7 +117,10 @@ class DatasetController:
             default_forecas=params.default_forecas,
         )
         # print("response", response)
-        return JSONResponse(content={"success": True, "result": response.__dict__})
+        return JSONResponse(
+            content={"success": True, "result": response.dataset_id},
+            status_code=status.HTTP_201_CREATED,
+        )
 
     @Post(
         "/create_from_temp",
@@ -71,11 +148,13 @@ class DatasetController:
         force_query: bool = False,
         direct_by_collection: bool = False,
         limit: int = None,
+        query_id: str = None,
     ):
         response = self.service.retrieve(
             dataset_id=dataset_id,
             force_query=force_query,
             direct_by_collection=direct_by_collection,
             limit=limit,
+            query_id=query_id,
         )
         return JSONResponse(content={"success": True, "result": response})

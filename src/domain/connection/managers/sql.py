@@ -161,11 +161,7 @@ class SQLManager(DBManager):
     def to_json(
         self, query=Query, orient: str = "records", **kwargs
     ) -> List[Dict[str, Any]]:
-        print("******************* parsed query *******************")
-        print(query)
         parsed_query = self._kwargs_to_query(query=query, **kwargs)
-        print("******************* parsed query *******************")
-        print(parsed_query)
         if orient == "records":
             with self.conn.cursor() as cursor:
                 cursor.execute(parsed_query)

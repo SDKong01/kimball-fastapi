@@ -4,7 +4,7 @@ from typing import List, Optional, Any, Dict, Union, Type
 from src.domain.connection.exceptions import MethodNotAvailable
 from src.domain.connection.models import DBManager
 from src.domain.connection.services import ConnServices
-from src.domain.queryset.models import Query, Filter
+from src.domain.queryset.models import Query, Filter, DimmensionalStructure
 
 from src.constants import (
     EQUAL,
@@ -158,6 +158,7 @@ class QuerySet:
         query: Query,
         db_manager: DBManager,
         is_cached: bool = False,
+        dimensional_structure: Dict[str, str] = None,
         *args,
         **kwargs,
     ):
@@ -167,6 +168,7 @@ class QuerySet:
 
         self._result_cache = None
         self.extra_query_kwargs = kwargs
+        self.dimensional_structure = dimensional_structure
 
     @abstractmethod
     def _set_persistent_cache(self, value):
@@ -205,7 +207,18 @@ class QuerySet:
         if self.is_cached:
             QueryServices().update_or_create(query=self.query, **kwargs)
 
-        response = self.db_manager.to_json(query=self.query, orient=orient, **kwargs)
+        _dim_structure = (
+            DimmensionalStructure(**self.dimensional_structure)
+            if self.dimensional_structure
+            else None
+        )
+
+        response = self.db_manager.to_json(
+            query=self.query,
+            orient=orient,
+            dim_structure=_dim_structure,
+            **kwargs,
+        )
         return response
 
     suffixes = [
@@ -303,8 +316,22 @@ class QuerySet:
         response = None
         # if self.db_manager.cache_enabled:
         #     response = self._get_persistent_cache()
-
-        response = response or self.db_manager.retrieve(self.query)
+        # TODO: should dim structure missing block the query?
+        dim_structure = None
+        try:
+            dim_structure = (
+                DimmensionalStructure(**self.dimensional_structure)
+                if self.dimensional_structure
+                else None
+            )
+        except Exception as e:
+            print("dim_structure", e)
+            pass
+        print("******************* metadata *******************")
+        print(dim_structure)
+        response = response or self.db_manager.retrieve(
+            self.query, dim_structure=dim_structure
+        )
 
         m = {
             "all": self._all,

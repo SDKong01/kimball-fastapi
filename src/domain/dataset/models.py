@@ -31,3 +31,5 @@ class Metadata:
     dataset_keywords: Optional[List[str]] = None
     fields_keywords: Optional[Dict[str, List[str]]] = None
     values_keywords: Optional[Dict[str, Any]] = None
+    created_date: Optional[str] = None
+    dimensional_structure: Optional[Dict[str, Any]] = None
