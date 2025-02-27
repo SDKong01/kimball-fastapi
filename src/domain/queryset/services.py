@@ -325,10 +325,7 @@ class QuerySet:
                 else None
             )
         except Exception as e:
-            print("dim_structure", e)
             pass
-        print("******************* metadata *******************")
-        print(dim_structure)
         response = response or self.db_manager.retrieve(
             self.query, dim_structure=dim_structure
         )

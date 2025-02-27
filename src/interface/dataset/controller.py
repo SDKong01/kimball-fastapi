@@ -133,7 +133,6 @@ class DatasetController:
         params: DatasetCreateFromTempSerializer,
     ):
         response = self.service.create_from_temp_collection(**params.json())
-        print("response", response)
         return JSONResponse(content={"success": True, "result": response.__dict__})
 
     @Get(

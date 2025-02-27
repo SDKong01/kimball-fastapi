@@ -166,7 +166,6 @@ class MatrixExplorerTransformations:
     #         is_col_oriented: True
 
     def orientation(self, x: int, y: int, x_end: int, y_end: int) -> Tuple[int, int]:
-        print()
         full_table_data = [
             Cell(
                 x=item["x"],
@@ -195,11 +194,6 @@ class MatrixExplorerTransformations:
         def ignore_nones(
             x: CellType, y: Cell, to_print: bool = False, _x: Any = None
         ) -> bool:
-            if to_print:
-                print("**************** x *********************")
-                print(_x, x)
-                print("**************** y *********************")
-                print(y)
             return x == y.celltype if not y.celltype.is_null else True
 
         for cell in data_sorted:
@@ -211,7 +205,6 @@ class MatrixExplorerTransformations:
             # Not orientation founded, break the loop
             if not is_x_oriented and not is_y_oriented:
                 is_y_oriented, is_x_oriented = True, True
-                print("not orientation found")
                 break
 
             is_y_different = cell.x != prev_x
@@ -228,11 +221,6 @@ class MatrixExplorerTransformations:
                 prev_x_cells = []
 
             if is_y_different and is_y_oriented:
-                print(
-                    "y different",
-                    list(prev_y_cells),
-                )
-                print()
                 is_y_oriented = all(
                     ignore_nones(p.celltype, cell, True, (p.x, p.y))
                     for p in prev_y_cells
@@ -395,7 +383,6 @@ class MatrixExplorerTransformations:
         #     return all(orientations)
 
         for table in new_coordinates:
-            print("new coordinates", table)
             (column_init, row_init), (column_end, row_end) = table
 
             # A single line or single columns, not a table
