@@ -1,13 +1,52 @@
 from os import getenv
+from pathlib import Path
 from ast import literal_eval
 from os import environ
 from dotenv import load_dotenv
 from typing import Optional, Dict, Any, List
-from pydantic import BaseSettings, validator
+from pydantic import BaseSettings, validator, BaseModel
+from logging_utilities.formatters.extra_formatter import ExtraFormatter
 from src.infrastructure.mongo_manager.mongo_db_connection import MongoDBConnection
 
 
 load_dotenv()
+
+
+class LogSettings(BaseModel):
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    version = 1
+    disable_existing_loggers = False
+    formatters = {
+        'app': {
+            '()': ExtraFormatter,
+            'format': 'level: "%(levelname)s"\t msg: "%(message)s"\t logger: "%(name)s"\t func: "%(funcName)s"\t time: "%(asctime)s"',
+            'datefmt': '%Y-%m-%dT%H:%M:%S.%z',
+            'extra_fmt': '\t extra: %s',
+        },
+        "uvicorn": {
+            "()": "uvicorn.logging.DefaultFormatter",
+            'format': "%(levelprefix)s | %(asctime)s | %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    }
+    handlers = {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'uvicorn',
+        },
+        'app_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs/log.log',
+            'formatter': 'app',
+        },
+    }
+    loggers = {
+        '': {'handlers': ['app_file'], 'level': 'DEBUG', 'propagate': True},
+        'uvicorn': {'handlers': ['console'], 'level': 'INFO', 'propagate': True},
+    }
 
 
 class AppSetting(BaseSettings):
@@ -32,6 +71,8 @@ class AppSetting(BaseSettings):
     REDIS_DB: int = getenv('REDIS_DB', 0)
 
     ALLOWED_ORIGINS: Any = getenv('ALLOWED_ORIGINS')
+
+    LOGGING = LogSettings().dict()
 
     @validator('ALLOWED_ORIGINS', pre=True, always=True)
     def assemble_allowed_origins(v: Optional[str]) -> List[str]:

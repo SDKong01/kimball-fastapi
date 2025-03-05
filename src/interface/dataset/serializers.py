@@ -5,12 +5,14 @@ from pydantic import BaseModel
 class DatasetCreateSerializer(BaseModel):
     description: str
     dataset_name: str
-    conn_id: str
     query_id: str
+    is_dim: bool = False
+    conn_id: str = None
     clone: bool = False
     tags: list = None
     default_forecas: int = 6
     is_self_hosted: bool = False
+    local_dataset_id: str = None
 
 
 class DatasetCreateFromTempSerializer(BaseModel):

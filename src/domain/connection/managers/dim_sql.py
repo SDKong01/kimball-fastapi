@@ -106,8 +106,9 @@ class SQLManager(DBManager):
 
         is_raw_column = query.group_by in dim_structure.fields_raw
         if is_raw_column:
-            group_by = f'GROUP BY ds."{query.group_by}"'
-            return group_by
+            self.fields = f'{data_table_name}."{query.group_by}",'
+            self.group_by = f'GROUP BY ds."{query.group_by}"'
+            return
 
         clean_group_by = query.group_by.replace("*", "")
         dim_table = dim_structure.pivot_tables_map.get(clean_group_by)
@@ -128,7 +129,7 @@ class SQLManager(DBManager):
         self.fields = f'{self.dim_set_name}."{clean_group_by}"'
 
         if dim_table == dim_structure.table_calendar_dimension:
-            self.fields = self.fields + ' AS "Calendar Date",'
+            self.fields = self.fields + ' AS "Calendar Date"'
         self.group_by = group_by
 
     def _group_by_naive(self, query: Query, **kwargs):
@@ -156,13 +157,13 @@ class SQLManager(DBManager):
             op = self.aggregators_translation.get(f.operator, "")
             if op:
 
-                self.fields += f'{op}({pre}."{f.field}") AS "{op.lower()}_{f.field}",'
+                self.fields += f', {op}({pre}."{f.field}") AS "{op.lower()}_{f.field}"'
             elif f.operator in ["fields", "eq"]:
-                self.fields += f'{pre}."{f.field}",'
+                self.fields += f', {pre}."{f.field}"'
                 if is_group_by:
                     self.group_by += f', "{f.field}"'
             elif f.operator == "field_as":
-                self.fields += f'"{f.field}" AS "{f.value}",'
+                self.fields += f', "{f.field}" AS "{f.value}"'
 
     def _kwargs_to_query(self, query=Query, **kwargs):
         replace_date = kwargs.get("replace_date", False)
@@ -191,36 +192,6 @@ class SQLManager(DBManager):
                 where_statement += f"{q.field} {op} '{q.value}' OR "
 
         where_statement = where_statement[:-4]
-
-        # query.fields = query.fields or []
-        # if query.fields:
-        #     fields_statement = ""
-
-        # for f in query.fields:
-        #     if isinstance(f, dict):
-        #         f = Filter(**f)
-        #     op = self.aggregators_translation.get(f.operator, "")
-        #     if op:
-        #         fields_statement += f'{op}("{f.field}") AS "{f.field}",'
-        #     elif f.operator in ["fields", "eq"]:
-        #         fields_statement += f'"{f.field}",'
-        #     elif f.operator == "field_as":
-        #         fields_statement += f'"{f.field}" AS "{f.value}",'
-
-        # if query.date_column and replace_date:
-        #     if fields_statement == "*,":
-        #         # There is no fields in the query so we need to get the column names
-        #         parsed_query = f"SELECT * FROM {schema}.{table}  {where_statement} {group_by_statement} LIMIT 1{self.finish_query}"
-        #         with self.conn.cursor() as cursor:
-        #             cursor.execute(parsed_query)
-        #             column_names = [desc[0] for desc in cursor.description]
-
-        #         fields_statement = ", ".join(column_names)
-
-        #     # Replace the date column name with the alias "Calendar Date"
-        #     fields_statement = fields_statement.replace(
-        #         query.date_column, f'{query.date_column} AS "Calendar Date"'
-        #     )
 
         fields_statement = self.fields.removesuffix(",")
         source_data_nickname = self.pivot_set_name if has_pivot else self.data_set_name

@@ -48,10 +48,15 @@ class DatasetAppServices:
         clone: bool = False,
         tags: List[str] = None,
         default_forecas: int = 6,
+        is_dim: bool = False,
+        local_dataset_id: str = None,
     ):
         # print("conn params in aplication", conn_params)
-        _query = QueryServices().retrieve(query=query)
-        # print("query in aplication", _query)
+        if is_dim:
+            _query = query
+        else:
+            _query = QueryServices().retrieve(query=query)
+        # print("query in aplication", _query.dimensional_structure)
         response = DatasetServices().create(
             description=description,
             dataset_name=dataset_name,
@@ -60,6 +65,8 @@ class DatasetAppServices:
             clone=clone,
             tags=tags,
             default_forecas=default_forecas,
+            is_dim=is_dim,
+            local_dataset_id=local_dataset_id,
         )
         return response
 

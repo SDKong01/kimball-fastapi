@@ -17,7 +17,7 @@ from src.interface.mixins import ErrorResponseSerializer
 from src.constants import MONGO, DB_ENGINES, APPLICATION_ENGINES
 from src.domain.data_source.exceptions import DBEngineNotSupported
 from src.domain.connection.models import ConnParams
-from src.domain.connection.exceptions import ConnectionMissinParams
+from src.domain.connection.exceptions import ConnectionMissinParams, ConnectionError
 from .serializers import EngineAvailables
 
 
@@ -127,6 +127,14 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
 
+        except ConnectionError as e:
+            response = ErrorResponseSerializer(
+                success=False, error={"item": "db-engine-invalid", "detail": e.detail}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
+            )
+
     @Post(
         "/connection-test",
         summary="Test connection",
@@ -165,6 +173,13 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
         except ConnectionMissinParams as e:
+            response = ErrorResponseSerializer(
+                success=False, error={"item": "db-engine-invalid", "detail": e.detail}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
+            )
+        except ConnectionError as e:
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-engine-invalid", "detail": e.detail}
             )

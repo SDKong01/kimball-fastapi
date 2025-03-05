@@ -15,3 +15,7 @@ class ArgumentError(BaseExceptionMixin):
 
 class ConnectionMissing(BaseExceptionMixin):
     pass
+
+
+class ConnectionError(BaseExceptionMixin):
+    pass

@@ -1,5 +1,7 @@
 from psycopg2 import connect
+from psycopg2 import OperationalError
 from src.domain.connection.models import ConnClient, ConnParams
+from src.domain.connection.exceptions import ConnectionError
 
 
 class PostgresClientConn(ConnClient):
@@ -24,9 +26,15 @@ class PostgresClientConn(ConnClient):
 
     def stablish_connection(self, **kwargs):
         _params = {**self.conn_params.params}
-        connection = connect(
-            **_params,
-        )
+        try:
+            connection = connect(
+                **_params,
+            )
+        except OperationalError as e:
+            raise ConnectionError(
+                item="stablish-connection-error",
+                detail=f"Error conecting to postgresql",
+            )
         return connection
 
     def ping(self, conn) -> bool:

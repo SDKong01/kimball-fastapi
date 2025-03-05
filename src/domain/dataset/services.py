@@ -290,9 +290,17 @@ class DatasetServices:
         clone: bool = False,
         tags: List[str] = None,
         default_forecas: int = 6,
+        is_dim: bool = False,
+        local_dataset_id: str = None,
     ) -> Metadata:
         _db_manager = ConnServices.get_db_manager(conn_params)
-        queryset = QuerySet(query=query, db_manager=_db_manager).limit(1)
+        # queryset = QuerySet(query=query, db_manager=_db_manager).limit(1)
+        if is_dim:
+            queryset = DatasetServices.retrive_dim_version(
+                dataset_id=local_dataset_id, force_query=True, query_id=query.id
+            ).limit(None)
+        else:
+            queryset = QuerySet(query=query, db_manager=_db_manager)
         data = self._data(queryset=queryset)
 
         db_params = ConnServices.get_existing_conn(conn_params=conn_params)
@@ -315,7 +323,7 @@ class DatasetServices:
             is_active=True,
             collection_name=DatasetServices.parse_dataset_name(dataset_name),
             date_grain=None,
-            date_column=query.date_column,
+            date_column=getattr(query, "date_column", None),
             target_columns=None,
             dataset_type=None,
             data_source=None,
@@ -327,12 +335,18 @@ class DatasetServices:
         for key, value in columns_data.items():
             setattr(metadata, key, value)
 
-        if metadata.dataset_type == "time_series":
-            data = (
-                queryset.order_by(metadata.date_column)
-                .limit(2)
-                .to_json(replace_date=True)
-            )
+        if metadata.dataset_type == "time_series" or is_dim:
+            if is_dim:
+                data = queryset.to_json()
+                # data = DatasetServices.retrive_dim_version(
+                #     dataset_id=local_dataset_id, force_query=True, query_id=query.id
+                # ).to_json()
+            else:
+                data = (
+                    queryset.order_by(metadata.date_column)
+                    .limit(2)
+                    .to_json(replace_date=True)
+                )
             first_date = data[0].get(metadata.date_column)
             first_date = DatasetServices.value_as_date(first_date)
             if len(data) > 1:
@@ -343,7 +357,7 @@ class DatasetServices:
                 )
                 metadata.date_grain = date_grain
 
-        queryset.limit(None)
+        queryset = queryset.limit(None)
         data = self._data(queryset=queryset)
 
         df = pd.DataFrame(data)

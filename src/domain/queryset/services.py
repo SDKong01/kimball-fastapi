@@ -364,7 +364,11 @@ class QuerySet:
         return response
 
     def _clone(self):
-        c = self.__class__(query=self.query, db_manager=self.db_manager)
+        c = self.__class__(
+            query=self.query,
+            db_manager=self.db_manager,
+            dimensional_structure=self.dimensional_structure,
+        )
         query_params = self.query.__dict__.copy()
         c.query = Query(**query_params)
         return c

@@ -115,6 +115,8 @@ class DatasetController:
             clone=params.clone,
             tags=params.tags,
             default_forecas=params.default_forecas,
+            is_dim=params.is_dim,
+            local_dataset_id=params.local_dataset_id,
         )
         # print("response", response)
         return JSONResponse(

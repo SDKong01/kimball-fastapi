@@ -17,18 +17,10 @@ from src.domain.connection.clients.postgresql import PostgresClientConn
 from src.domain.connection.clients.mongo import MongoClientConn
 from src.domain.connection.managers.document_based import DocumentBasedManager
 from src.domain.connection.clients.redis import RedisClientConn
-
 from src.domain.connection.managers.key_value import KeyValueManager
 
-from src.config import settings
+from .exceptions import ConnectionError, ConnectionMissinParams
 
-# class ConnServices:
-#     @staticmethod
-#     def get_factory():
-#         return ConnFactory
-
-
-# all_params = {MONGO: MongoParams}
 dbmanagers: Dict[str, DBManager] = {
     MONGO: DocumentBasedManager,
     ORACLE: OracleManager,
@@ -47,7 +39,9 @@ class ConnServices:
     @staticmethod
     def stablish_temporal_conn(conn_params: ConnParams) -> str:
         if not conn_params.engine:
-            raise ValueError("Engine is required")
+            raise ConnectionMissinParams(
+                item="Connectionn", detail="Provide a valid engine"
+            )
         client = clients.get(conn_params.engine, MongoClientConn)
         client = client(conn_params=conn_params)
         conn = client.conn(save_connection=False)
