@@ -1,3 +1,4 @@
+import traceback
 from nest.core import Controller, Depends, Get, Post
 from fastapi import UploadFile, File, status, Response, HTTPException
 from fastapi.responses import JSONResponse
@@ -113,6 +114,7 @@ class ConnectionController:
                 status_code=status.HTTP_418_IM_A_TEAPOT, detail=response.dict()
             )
         except TypeValidationError as e:
+            traceback.print_exc()
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-connection", "detail": str(e)}
             )
@@ -120,6 +122,7 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
         except ConnectionMissinParams as e:
+            traceback.print_exc()
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-engine-invalid", "detail": e.detail}
             )
@@ -128,8 +131,9 @@ class ConnectionController:
             )
 
         except ConnectionError as e:
+            traceback.print_exc()
             response = ErrorResponseSerializer(
-                success=False, error={"item": "db-engine-invalid", "detail": e.detail}
+                success=False, error={"item": "db-connection-error", "detail": e.detail}
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
@@ -173,6 +177,7 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
         except ConnectionMissinParams as e:
+            traceback.print_exc()
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-engine-invalid", "detail": e.detail}
             )
@@ -180,8 +185,9 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
         except ConnectionError as e:
+            traceback.print_exc()
             response = ErrorResponseSerializer(
-                success=False, error={"item": "db-engine-invalid", "detail": e.detail}
+                success=False, error={"item": "db-connection-error", "detail": e.detail}
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
