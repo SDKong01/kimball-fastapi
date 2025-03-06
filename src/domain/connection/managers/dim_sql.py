@@ -122,7 +122,7 @@ class SQLManager(DBManager):
 
         group_by = (
             f' JOIN {schema}."{dim_table}" {self.dim_set_name} '
-            f' ON {data_table_name}."{column_data}"{'::Date' if is_date else ""} = {self.dim_set_name}."{column_dim}" '
+            f' ON {data_table_name}."{column_data}"{"::Date" if is_date else ""} = {self.dim_set_name}."{column_dim}" '
             f' GROUP BY {self.dim_set_name}."{clean_group_by}"'
         )
 
