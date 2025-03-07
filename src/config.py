@@ -44,7 +44,8 @@ class LogSettings(BaseModel):
         },
     }
     loggers = {
-        '': {'handlers': ['app_file'], 'level': 'DEBUG', 'propagate': True},
+        # '': {'handlers': ['app_file'], 'level': 'DEBUG', 'propagate': True},
+        '': {'handlers': ['console'], 'level': 'ERROR', 'propagate': True},
         'uvicorn': {'handlers': ['console'], 'level': 'INFO', 'propagate': True},
     }
 

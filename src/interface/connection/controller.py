@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from dataclass_type_validator import TypeValidationError
 
 # local imports
+from src.infrastructure.logger.services import AttributeLogger, logger_dpf
 from src.interface.data_source.serializers import (
     UploadFileResponseSerializer,
 )
@@ -25,6 +26,7 @@ from .serializers import EngineAvailables
 @Controller(tag="Connection", prefix="v1/connection")
 class ConnectionController:
     service: ConnectionAppServices = Depends(ConnectionAppServices)
+    logger: AttributeLogger = Depends(logger_dpf)
 
     @Get(
         "/engines",
@@ -177,7 +179,7 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
         except ConnectionMissinParams as e:
-            traceback.print_exc()
+            self.logger.error(f"Connection error {traceback.format_exc()}")
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-engine-invalid", "detail": e.detail}
             )
@@ -185,7 +187,7 @@ class ConnectionController:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=response.dict()
             )
         except ConnectionError as e:
-            traceback.print_exc()
+            self.logger.error(f"Connection error {traceback.format_exc()}")
             response = ErrorResponseSerializer(
                 success=False, error={"item": "db-connection-error", "detail": e.detail}
             )
