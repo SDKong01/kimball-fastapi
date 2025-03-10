@@ -21,6 +21,8 @@ class DatasetCreateFromTempSerializer(BaseModel):
     date_column: str
     temp_dataset_id: str
     tags: list = None
+    has_headers: bool = False
+    cells_range: str = None
 
 
 class MetadataResponseSerializer(BaseModel):

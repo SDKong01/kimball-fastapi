@@ -78,6 +78,8 @@ class DatasetAppServices:
         temp_dataset_id: str,
         # query: Query = None,
         tags: List[str] = None,
+        has_headers: bool = False,
+        cells_range: str = None,
     ):
         response = DatasetServices().create_from_temp_collection(
             description=description,
@@ -86,8 +88,15 @@ class DatasetAppServices:
             temp_dataset_id=temp_dataset_id,
             # query=query,
             tags=tags,
+            has_headers=has_headers,
+            cells_range=cells_range,
         )
         return response
+
+    def del_temp_collections(self) -> None:
+        collections = DatasetServices.list_temp_collection()
+        [DatasetServices.del_collection(collection_name=c) for c in collections]
+        return
 
 
 class MetadataAppServices:

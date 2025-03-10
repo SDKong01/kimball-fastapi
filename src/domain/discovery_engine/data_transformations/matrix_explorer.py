@@ -453,10 +453,36 @@ class MatrixExplorerTransformations:
             cols = sorted({d["column"] for d in self.data_list})
             rows = sorted({d["row"] for d in self.data_list})
         filtered_data = []
-        for r in rows:
-            row_data = {"row": r}
-            row_data.update({c: self.excel_data_map[c][r] for c in cols})
-            filtered_data.append(row_data)
+
+        if has_headers:
+            # headers = [
+            #     self.excel_data_map[c][cols[0]]
+            #     for y in range(rows[0], rows[-1] + 1)
+            #     if self.excel_data_map[y][cols[0]] is not None
+            # ]
+            headers = [self.excel_data_map[c][rows[0]] for c in cols]
+            for idx, r in enumerate(rows):
+                row_data = {}
+                for idc, c in enumerate(cols):
+                    row_data.update({headers[idc]: self.excel_data_map[c][r]})
+
+                filtered_data.append(row_data)
+
+            # headers = [
+            #     self.excel_data_map[y][cols[0]]
+            #     for y in range(rows[0], rows[-1] + 1)
+            #     if self.excel_data_map[y][cols[0]] is not None
+            # ]
+            # print(headers)
+            filtered_data = [
+                dict(zip(headers, row.values())) for row in filtered_data[1:]
+            ]
+        else:
+            for r in rows:
+                row_data = {"row": r}
+                row_data.update({c: self.excel_data_map[c][r] for c in cols})
+                filtered_data.append(row_data)
+
         return filtered_data
 
     # def get_table_data(self, table, row_oriented, col_oriented, has_headers: bool):

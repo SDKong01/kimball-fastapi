@@ -85,6 +85,17 @@ class DocumentBasedManager(DBManager):
 
         self.conn[db][collection].insert_many(query_statement)
 
+    def delete(self, query: Query, **kwargs):
+        db = query.db
+        collection: str = query.collection
+
+        if collection.startswith("temp_"):
+            self.conn[db][collection].drop()
+        elif collection.statswith("sys_"):
+            raise Exception("Cannot delete system collection")
+        else:
+            self.conn[db][collection].rename(f"del_{collection}")
+
     def raw_query(self, *args, **kwargs):
         db = kwargs.get("db")
         collection = kwargs.get("collection")
@@ -94,7 +105,10 @@ class DocumentBasedManager(DBManager):
 
     def list_collections(self, *args, **kwargs):
         db = kwargs.get("db")
-        collections = list(self.conn[db].list_collection_name())
+        prefix = kwargs.get("prefix")
+        collections = list(self.conn[db].list_collection_names())
+        if prefix:
+            collections = [c for c in collections if c.startswith(prefix)]
         return collections
 
     def list_databases(self, *args, **kwargs) -> List[str]:

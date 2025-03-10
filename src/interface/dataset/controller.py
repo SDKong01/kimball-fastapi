@@ -1,4 +1,4 @@
-from nest.core import Controller, Depends, Get, Post
+from nest.core import Controller, Depends, Get, Post, Delete
 from fastapi import UploadFile, File, status, Response, HTTPException
 from fastapi.responses import JSONResponse
 from dataclass_type_validator import TypeValidationError
@@ -134,7 +134,7 @@ class DatasetController:
         self,
         params: DatasetCreateFromTempSerializer,
     ):
-        response = self.service.create_from_temp_collection(**params.json())
+        response = self.service.create_from_temp_collection(**params.dict())
         return JSONResponse(content={"success": True, "result": response.__dict__})
 
     @Get(
@@ -159,3 +159,13 @@ class DatasetController:
             query_id=query_id,
         )
         return JSONResponse(content={"success": True, "result": response})
+
+    @Delete(
+        "/temp_collections",
+        summary="Delete temp collections",
+        description="Delete temp collections.",
+        operation_id="delete_temp_collections",
+    )
+    async def delete_temp_collections(self):
+        self.service.del_temp_collections()
+        return JSONResponse(content={"success": True})

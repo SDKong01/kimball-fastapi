@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from dataclass_type_validator import dataclass_validate
 from src.domain.dataset.services import DatasetServices
@@ -65,15 +65,25 @@ class DiscoveryEngineAppServices:
         excel_regex = r'^[A-Z]{1,3}[1-9][0-9]*:[A-Z]{1,3}[1-9][0-9]*$'
         return bool(re.match(excel_regex, str))
 
+    def _is_raw_data(self, item: Dict[str, Any]) -> bool:
+        keys = item.keys()
+        if "x" in keys and "y" in keys and "value" in keys:
+            return True
+        return False
+
     def excel_exploration(
         self, sheet_name: str, cells_range: str = None, has_headers: bool = True
     ):
         data_services = DatasetServices()
         data = data_services.retrieve_as_json(sheet_name)[:]
+        if not self._is_raw_data(data[0]):
+            return data
         matrix_explorer = MatrixExplorerTransformations(data)
         if cells_range and not self._validate_cell_range(cells_range):
             raise ("Wrong excel cells range")
-        return matrix_explorer.get_raw_data_by_range(cell_range=cells_range)
+        return matrix_explorer.get_raw_data_by_range(
+            cell_range=cells_range, has_headers=has_headers
+        )
 
     # def get_schemas(self, conn_params: ConnectionDTO) -> list:
     #     db_conn = PostgresConnection(connection_id=conn_params.conn_id)

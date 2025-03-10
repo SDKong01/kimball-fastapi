@@ -19,6 +19,9 @@ from src.constants import EQUAL, SYS_METADATA_COLLECTION
 from src.domain.discovery_engine.data_transformations.matrix_explorer import (
     CellTypeFactory,
 )
+from src.domain.discovery_engine.data_transformations.matrix_explorer import (
+    MatrixExplorerTransformations,
+)
 
 
 class MetadataServices:
@@ -42,10 +45,9 @@ class MetadataServices:
 
         return date_grain
 
-    def compute_columns(self, dataset) -> Dict[str, Any]:
+    def compute_columns(self, dataset: List[Dict[str, Any]]) -> Dict[str, Any]:
         date_column = None
         dataset_type = "other"
-        matrix = MatrixExplorerTransformations(dataset)
         available_columns = list(dataset[0].keys())
         for c in available_columns:
             value = dataset[0].get(c)
@@ -147,6 +149,21 @@ class DatasetServices:
         response = value.replace("_", "").replace(" ", "")
         return response
 
+    @staticmethod
+    def del_collection(collection_name: str) -> None:
+        query = Query(db=settings.MONGO_DB, collection=collection_name)
+        print(query)
+        DatasetServices.system_db_manager().delete(query=query)
+
+    @staticmethod
+    def list_temp_collection() -> List[str]:
+        query = {
+            "db": settings.testing_client,
+            "prefix": "temp_",
+        }
+        collections = DatasetServices.system_db_manager().list_collections(**query)
+        return collections
+
     def create_only_data(
         self,
         data: dict,
@@ -185,12 +202,31 @@ class DatasetServices:
         temp_dataset_id: str,
         query: Query = None,
         tags: List[str] = None,
+        has_headers: bool = False,
+        cells_range: str = None,
     ):
         # TODO: data is stored in memory, change by a lazy function in order to prevent a memory issue
-        data = DatasetServices.retrive_by_collection(dataset_id=temp_dataset_id)
-        collction_name = self._rename_collection(
-            temp_dataset_id, DatasetServices.parse_dataset_name(dataset_name)
-        )
+
+        if has_headers or cells_range:
+            collction_name = self.parse_dataset_name(dataset_name)
+            raw_data = DatasetServices().retrieve_as_json(dataset_name=temp_dataset_id)
+            matrix_explorer = MatrixExplorerTransformations(raw_data)
+            data = matrix_explorer.get_raw_data_by_range(
+                cell_range=cells_range, has_headers=has_headers
+            )
+            query_save_data = Query(
+                db=settings.db_name,
+                collection=collction_name,
+                to_insert=data,
+            )
+            DatasetServices.system_db_manager().create(query_save_data)
+
+        else:
+            data = DatasetServices.retrive_by_collection(dataset_id=temp_dataset_id)
+            collction_name = self._rename_collection(
+                temp_dataset_id, DatasetServices.parse_dataset_name(dataset_name)
+            )
+
         metadata = Metadata(
             dataset_id=str(uuid.uuid4()),
             dataset_description={
@@ -199,7 +235,7 @@ class DatasetServices:
             },
             dataset_name=dataset_name,
             db_params=None,
-            query=query.__dict__,
+            query=query.__dict__ if query else None,
             owner=settings.testing_client,
             default_forecast=6,
             is_cloned=True,
@@ -214,7 +250,7 @@ class DatasetServices:
             tags=tags,
         )
 
-        columns_data = MetadataServices().compute_columns(data[0])
+        columns_data = MetadataServices().compute_columns(data)
         for key, value in columns_data.items():
             setattr(metadata, key, value)
 

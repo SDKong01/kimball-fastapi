@@ -211,6 +211,12 @@ class DBManager(ABC):
             detail="Method not available for this connection",
         )
 
+    def delete(self, *args, **kwargs):
+        raise MethodNotAvailable(
+            method="delete",
+            detail="Method not available for this connection",
+        )
+
     @abstractmethod
     def raw_query(self, *args, **kwargs):
         raise MethodNotAvailable(
