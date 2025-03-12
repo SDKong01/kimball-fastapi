@@ -21,8 +21,10 @@ from src.constants import (
 class SQLManager(DBManager):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields = "*,"
+        self._fields = []
+        self.pivot_query = ""
         self.group_by = ""
+        self.join_on = ""
 
     operators_translation = {
         EQUAL: "=",
@@ -57,6 +59,14 @@ class SQLManager(DBManager):
         "SELECT datname FROM pg_database WHERE datistemplate = false;"
     )
 
+    @property
+    def fields(self) -> str:
+        return ", ".join(self._fields)
+
+    @fields.setter
+    def fields(self, value):
+        self._fields.append(value)
+
     def process_response(self, response):
         return list(set(item[0] for item in response))
 
@@ -65,6 +75,20 @@ class SQLManager(DBManager):
         main_table = query.table
         pivot_table = dim_structure.pivot_tables_map.get(query.pivot)  # dim_vehicle
         pivot_column = query.pivot  # vehicle
+
+        where_statement = "WHERE " if query.filters else ""
+
+        for q in query.filters:
+            q = Filter(**q) if isinstance(q, dict) else q
+            op = self.operators_translation.get(q.operator)
+            if op:
+                where_statement += f's."{q.field}"'
+                where_statement += f" {op} '{q.value}' OR "
+
+        where_statement = where_statement[:-4]
+
+        group_by: List[str] = query.group_by
+
         with self.conn.cursor() as cursor:
             cursor.execute(f"SELECT {pivot_column} FROM {schema}.{pivot_table}")
             pivot_values = cursor.fetchall()
@@ -84,8 +108,15 @@ class SQLManager(DBManager):
             _value = f"'{value}'"
             select_statement += f'SUM(CASE WHEN v."{pivot_column}" = {_value} THEN s."{fild_agg}" ELSE 0 END) AS "{value}",'
         select_statement = select_statement.removesuffix(",")
-        query_string = f'SELECT {select_statement} FROM {schema}."{main_table}" s JOIN {schema}."{pivot_table}" v ON s."{column_data}" = v."{column_dim}" GROUP BY s."{query.date_column}"'
-        return query_string
+        query_string = (
+            f'SELECT {select_statement} '
+            f'FROM {schema}."{main_table}" s '
+            f'JOIN {schema}."{pivot_table}" v '
+            f'ON s."{column_data}" = v."{column_dim}" '
+            f'{where_statement}'
+            f'GROUP BY s."{query.date_column}"'
+        )
+        self.pivot_query = query_string
 
     pivot_set_name = "pv"
     data_set_name = "ds"
@@ -120,26 +151,28 @@ class SQLManager(DBManager):
 
         is_date = dim_table == dim_structure.table_calendar_dimension
 
-        group_by = (
+        self.join_on = (
             f' JOIN {schema}."{dim_table}" {self.dim_set_name} '
             f' ON {data_table_name}."{column_data}"{"::Date" if is_date else ""} = {self.dim_set_name}."{column_dim}" '
-            f' GROUP BY {self.dim_set_name}."{clean_group_by}"'
         )
 
-        self.fields = f'{self.dim_set_name}."{clean_group_by}"'
+        group_by = f' GROUP BY {self.dim_set_name}."{clean_group_by}"'
+
+        _fields = f'{self.dim_set_name}."{clean_group_by}"'
 
         if dim_table == dim_structure.table_calendar_dimension:
-            self.fields = self.fields + ' AS "Calendar Date"'
+            _fields = _fields + ' AS "Calendar Date"'
+        self.fields = _fields
         self.group_by = group_by
 
     def _group_by_naive(self, query: Query, **kwargs):
         group_by = f'GROUP BY "{query.group_by}"' if query.group_by else ""
         return group_by
 
-    def _fields(self, query: Query, dim_structure: DimmensionalStructure):
+    def _set_fields(self, query: Query, dim_structure: DimmensionalStructure):
         is_group_by = bool(self.group_by)
         if not query.fields and not is_group_by:
-            self.fields = "*,"
+            self.fields = "*"
             return
 
         fields = query.fields or []
@@ -156,17 +189,19 @@ class SQLManager(DBManager):
                 f = Filter(**f)
             op = self.aggregators_translation.get(f.operator, "")
             if op:
-
-                self.fields += f', {op}({pre}."{f.field}") AS "{op.lower()}_{f.field}"'
+                self.fields = f'{op}({pre}."{f.field}") AS "{op.lower()}_{f.field}"'
             elif f.operator in ["fields", "eq"]:
-                self.fields += f', {pre}."{f.field}"'
+                self.fields = (
+                    f'{self.data_set_name}."{f.field}"'
+                    if not query.pivot
+                    else f'{self.dim_set_name}."{f.field}"'
+                )
                 if is_group_by:
                     self.group_by += f', "{f.field}"'
             elif f.operator == "field_as":
-                self.fields += f', "{f.field}" AS "{f.value}"'
+                self.fields = f'"{f.field}" AS "{f.value}"'
 
     def _kwargs_to_query(self, query=Query, **kwargs):
-        replace_date = kwargs.get("replace_date", False)
         schema = query.schema
         table = query.table
         if not schema or not table:
@@ -176,12 +211,12 @@ class SQLManager(DBManager):
         if has_pivot:
             if not dim_structure:
                 raise Exception("Dimmensional structure is required")
-            pv = self._pivot_query(query=query, dim_structure=dim_structure)
+            self._pivot_query(query=query, dim_structure=dim_structure)
 
         where_statement = "WHERE " if query.filters else ""
         order_by_statement = f'ORDER BY "{query.order_by}"' if query.order_by else ""
         self._group_by_query(query=query, dim_structure=dim_structure)
-        self._fields(query=query, dim_structure=dim_structure)
+        self._set_fields(query=query, dim_structure=dim_structure)
 
         limit_statement = f'LIMIT {query.limit}' if query.limit else ""
 
@@ -189,32 +224,40 @@ class SQLManager(DBManager):
             q = Filter(**q) if isinstance(q, dict) else q
             op = self.operators_translation.get(q.operator)
             if op:
-                where_statement += f"{q.field} {op} '{q.value}' OR "
+                where_statement += f'{self.data_set_name}."{q.field}"'
+                where_statement += f" {op} '{q.value}' OR "
+                # where_statement += (
+                #     f"{self.data_set_name}.{q.field} {op} '{q.value}' OR "
+                # )
 
         where_statement = where_statement[:-4]
 
-        fields_statement = self.fields.removesuffix(",")
+        # fields_statement = self.fields.removesuffix(",")
         source_data_nickname = self.pivot_set_name if has_pivot else self.data_set_name
         if not has_pivot:
             query_string = (
-                f"SELECT {fields_statement} "
+                f"SELECT {self.fields} "
                 f"FROM {schema}.{table} {source_data_nickname} "
+                f"{self.join_on} "
                 f"{where_statement} "
                 f"{self.group_by} "
                 f"{order_by_statement} "
                 f"{limit_statement}"
             )
+            print(query_string)
         if has_pivot and not query.group_by:
-            query_string = pv
+            query_string = self.pivot_query
         if has_pivot and query.group_by:
             query_string = (
-                f"WITH pivot_table as ({pv}) "
-                f"SELECT {fields_statement} "
+                f"WITH pivot_table as ({self.pivot_query}) "
+                f"SELECT {self.fields} "
                 f"FROM pivot_table {self.pivot_set_name}"
+                f"{self.join_on} "
                 f"{self.group_by} "
                 f"{order_by_statement} "
                 f"{limit_statement}"
             )
+        print(query_string)
 
         query_string = query_string + self.finish_query
 

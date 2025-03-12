@@ -37,7 +37,7 @@ class Query:
     filters: List[Filter] = field(default_factory=list)
     exclude: Optional[List[Filter]] = None
     order_by: Optional[str] = None
-    group_by: Optional[str] = None
+    group_by: Optional[Union[str, List[str]]] = None
     limit: Optional[int] = None
     offset: Optional[int] = None
     headers: Optional[Dict[str, Union[str, Dict[str, str], List[str], None]]] = None
