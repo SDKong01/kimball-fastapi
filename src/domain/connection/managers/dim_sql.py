@@ -245,9 +245,9 @@ class SQLManager(DBManager):
                 f"{limit_statement}"
             )
             print(query_string)
-        if has_pivot and not query.group_by:
+        if has_pivot and not query.group_by and not query.fields:
             query_string = self.pivot_query
-        if has_pivot and query.group_by:
+        if has_pivot and (query.group_by or query.fields):
             query_string = (
                 f"WITH pivot_table as ({self.pivot_query}) "
                 f"SELECT {self.fields} "
