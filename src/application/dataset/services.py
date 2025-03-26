@@ -23,11 +23,35 @@ class DatasetAppServices:
         response = (
             DatasetServices().retrive_by_collection(dataset_id=dataset_id, limit=limit)
             if direct_by_collection
-            else DatasetServices().retrive_dim_version(
+            else DatasetServices.retrive_dim_version(
                 dataset_id=dataset_id, force_query=force_query, query_id=query_id
             )
         )
         return response.to_json()
+
+    def get_available_fields(
+        self,
+        dataset_id: str,
+        query_id: str = None,
+    ):
+        response = DatasetServices.retrive_dim_version(
+            dataset_id=dataset_id, query_id=query_id, available_fields=True
+        )
+        return response.to_json()
+
+    def get_slice_fields(
+        self,
+        dataset_id: str,
+        column_slice: str,
+    ):
+        response = DatasetServices.get_distinct_values(
+            dataset_id=dataset_id, column_name=column_slice
+        )
+        join_list = [x for x in response.to_json()]
+        # print(join_list)
+        response_list = list(list(y.values())[0] for y in join_list)
+        return response_list
+        # return response.to_json()
 
     def update(
         self,

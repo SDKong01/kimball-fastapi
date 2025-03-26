@@ -160,6 +160,40 @@ class DatasetController:
         )
         return JSONResponse(content={"success": True, "result": response})
 
+    @Get(
+        "/available_fields",
+        summary="Retrieve dataset",
+        description="Retrieve dataset.",
+        operation_id="available_dataset_fields",
+    )
+    async def available_fields(
+        self,
+        dataset_id: str,
+        query_id: str = None,
+    ):
+        response = self.service.get_available_fields(
+            dataset_id=dataset_id,
+            query_id=query_id,
+        )
+        return JSONResponse(content={"success": True, "result": response})
+
+    @Get(
+        "/slice_fields",
+        summary="Retrieve dataset",
+        description="Retrieve dataset.",
+        operation_id="slice_fields",
+    )
+    async def slice_fields(
+        self,
+        dataset_id: str,
+        column_slice: str,
+    ):
+        response = self.service.get_slice_fields(
+            dataset_id=dataset_id,
+            column_slice=column_slice,
+        )
+        return JSONResponse(content={"success": True, "result": response})
+
     @Delete(
         "/temp_collections",
         summary="Delete temp collections",

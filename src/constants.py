@@ -7,7 +7,8 @@ MONGO = "mongodb"
 POSTGRES = "postgres"
 ORACLE = "oracle"
 REDIS = "redis"
-DB_ENGINES = [MONGO, POSTGRES, ORACLE, REDIS]
+CLICKHOUSE = "clickhouse"
+DB_ENGINES = [MONGO, POSTGRES, ORACLE, REDIS, CLICKHOUSE]
 
 # APP ENGINES
 # --------------------------------------------------------

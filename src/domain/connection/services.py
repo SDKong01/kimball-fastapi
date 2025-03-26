@@ -8,7 +8,14 @@ from src.domain.connection.models import (
 )
 
 # from src.domain.connection.mongo.client import MongoClientConn
-from src.constants import existing_connections, MONGO, ORACLE, POSTGRES, REDIS
+from src.constants import (
+    existing_connections,
+    MONGO,
+    ORACLE,
+    POSTGRES,
+    REDIS,
+    CLICKHOUSE,
+)
 from src.domain.connection.clients.oracle import OracleClientConn
 from src.domain.connection.managers.sql import SQLManager
 from src.domain.connection.managers.dim_sql import SQLManager as DimSQLManager
@@ -18,6 +25,8 @@ from src.domain.connection.clients.mongo import MongoClientConn
 from src.domain.connection.managers.document_based import DocumentBasedManager
 from src.domain.connection.clients.redis import RedisClientConn
 from src.domain.connection.managers.key_value import KeyValueManager
+from src.domain.connection.clients.clickhouse import ClickHouseClient
+from src.domain.connection.managers.merge_tree_sql import MergeTreeManager
 
 from .exceptions import ConnectionError, ConnectionMissinParams
 
@@ -26,12 +35,14 @@ dbmanagers: Dict[str, DBManager] = {
     ORACLE: OracleManager,
     POSTGRES: SQLManager,
     REDIS: KeyValueManager,
+    CLICKHOUSE: MergeTreeManager,
 }
 clients: Dict[str, ConnClient] = {
     MONGO: MongoClientConn,
     ORACLE: OracleClientConn,
     POSTGRES: PostgresClientConn,
     REDIS: RedisClientConn,
+    CLICKHOUSE: ClickHouseClient,
 }
 
 
@@ -69,6 +80,14 @@ class ConnServices:
     def get_existing_connector(conn_params: ConnParams) -> ConnectionParams:
         conn: ConnectionParams = existing_connections.get(conn_params.id)
         return conn
+
+    @staticmethod
+    def get_tree_db_manager(conn_params: ConnParams) -> DBManager:
+        client = ClickHouseClient(conn_params=conn_params)
+        client.conn(save_connection=True)
+        db_manager: DBManager = MergeTreeManager(connection=client)
+
+        return db_manager
 
     @staticmethod
     def get_pivot_db_manager(conn_params: ConnParams) -> DBManager:

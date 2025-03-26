@@ -14,6 +14,7 @@ from src.interface.discovery_engine.module import DiscoveryEngineModule
 from src.interface.connection.module import ConnectionModule
 from src.interface.queryset.module import QuerySetModule
 from src.interface.dataset.module import DatasetModule
+from src.interface.tree.module import TreeModule
 
 from src.domain.connection.models import ConnParams
 
@@ -62,6 +63,22 @@ async def lifespan(app: App):
     settings.cache_client_params = ConnParams(
         id=cache_connector.id, engine=cache_params.engine, params=cache_params.params
     )
+
+    # Stablis connection to clickhouse db
+    clickhouse_params = ConnParams(
+        engine="clickhouse",
+        params={
+            "host": settings.CLICKHOUSE_HOST,
+            "username": settings.CLICKHOUSE_USER,
+            "user": settings.CLICKHOUSE_USER,
+            "password": "x",
+            "port": settings.CLICKHOUSE_PORT,
+            "database": settings.CLICKHOUSE_DB,
+        },
+    )
+    clickhouse_connector = ConnServices.open_persistant_connection(clickhouse_params)
+    settings.clickhouse_client_connector = clickhouse_connector
+    settings.clickhouse_client_params = clickhouse_params
     yield
     # connector.close()
     # cache_connector.close()
@@ -75,6 +92,7 @@ app = App(
         ConnectionModule,
         QuerySetModule,
         DatasetModule,
+        TreeModule,
     ],
     lifespan=lifespan
 )
@@ -82,7 +100,7 @@ app = App(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

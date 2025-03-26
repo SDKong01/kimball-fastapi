@@ -55,8 +55,9 @@ class Query:
     schema: Optional[str] = None
     table: Optional[str] = None
     date_column: Optional[str] = None
-    pivot: Optional[str] = None
+    pivot: Optional[List[List[str]]] = None
     pivot_columns: Optional[List[str]] = None
+    distinct_field: Optional[str] = None
 
 
 @dataclass()

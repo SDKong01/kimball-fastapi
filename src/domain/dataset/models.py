@@ -33,3 +33,6 @@ class Metadata:
     values_keywords: Optional[Dict[str, Any]] = None
     created_date: Optional[str] = None
     dimensional_structure: Optional[Dict[str, Any]] = None
+    tree_structure: Optional[Dict[str, Any]] = None
+    obt_structure: Optional[Dict[str, Any]] = None
+    data_modeling: Optional[str] = None

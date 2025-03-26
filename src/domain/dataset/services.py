@@ -22,6 +22,7 @@ from src.domain.discovery_engine.data_transformations.matrix_explorer import (
 from src.domain.discovery_engine.data_transformations.matrix_explorer import (
     MatrixExplorerTransformations,
 )
+from src.application.tree.services import TreeAppServices
 
 
 class MetadataServices:
@@ -135,6 +136,12 @@ class DatasetServices:
         return ConnServices.get_db_manager(conn_params=settings.db_client_params)
 
     @staticmethod
+    def system_obt_db_manager() -> DBManager:
+        return ConnServices.get_tree_db_manager(
+            conn_params=settings.clickhouse_client_params
+        )
+
+    @staticmethod
     def value_as_date(value: str) -> datetime:
         date_pattern = r'\b(\d{4}[-/]\d{2}(?:[-/]\d{2})?(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?|\d{2}[-/]\d{2}[-/]\d{4})\b'
         if re.match(date_pattern, value):
@@ -170,7 +177,7 @@ class DatasetServices:
         collection_name: str,
     ) -> Metadata:
         query_save_data = Query(
-            db=settings.testing_client,
+            db=settings.MONGO_DB,
             collection=collection_name,
             to_insert=data,
         )
@@ -334,7 +341,7 @@ class DatasetServices:
         if is_dim:
             queryset = DatasetServices.retrive_dim_version(
                 dataset_id=local_dataset_id, force_query=True, query_id=query.id
-            ).limit(None)
+            )
         else:
             queryset = QuerySet(query=query, db_manager=_db_manager)
         data = self._data(queryset=queryset)
@@ -440,8 +447,12 @@ class DatasetServices:
 
     @staticmethod
     def retrive_dim_version(
-        dataset_id: str, force_query: bool = False, query_id: str = None
+        dataset_id: str,
+        force_query: bool = False,
+        query_id: str = None,
+        available_fields: bool = False,
     ) -> QuerySet:
+        pivot_childs = []
         metadata = MetadataServices.retrieve(dataset_id=dataset_id)[0]
 
         query_obj = Query(id=query_id)
@@ -452,12 +463,62 @@ class DatasetServices:
         query.date_column = metadata.date_column
 
         _conn_params = ConnParams(**metadata.db_params)
-        db_manager = ConnServices.get_pivot_db_manager(conn_params=_conn_params)
+
+        if metadata.data_modeling == "obt":
+            db_manager = DatasetServices.system_obt_db_manager()
+            # Tree structure stuff
+            # tree_app = TreeAppServices()
+            # if query.pivot and len((pivots := query.pivot.split(","))) > 2:
+            #     pivot_childs = [{"id_centro_costos": p} for p in pivots]
+            # else:
+            #     pivot_childs = (
+            #         tree_app.list_childs(node_id=str(query.pivot))
+            #         if query.pivot
+            #         else []
+            #     )
+        else:
+            db_manager = ConnServices.get_pivot_db_manager(conn_params=_conn_params)
 
         response = QuerySet(
             query=query,
             db_manager=db_manager,
             dimensional_structure=metadata.dimensional_structure,
+            pivot_childs=pivot_childs,
+            available_fields=available_fields,
+        )
+        return response
+
+    @staticmethod
+    def get_distinct_values(
+        dataset_id: str,
+        column_name: str,
+    ) -> QuerySet:
+        pivot_childs = []
+        metadata = MetadataServices.retrieve(dataset_id=dataset_id)[0]
+
+        query = Query(distinct_field=column_name)
+        # query = QueryServices().retrieve(query=query_obj)
+        query.schema = metadata.query.get("schema", None)
+        query.table = metadata.query.get("table", None)
+        query.db = metadata.query.get("db", None)
+        # query.date_column = metadata.date_column
+
+        _conn_params = ConnParams(**metadata.db_params)
+
+        if metadata.data_modeling == "obt":
+            db_manager = DatasetServices.system_obt_db_manager()
+            tree_app = TreeAppServices()
+            pivot_childs = (
+                tree_app.list_childs(node_id=str(query.pivot)) if query.pivot else []
+            )
+        else:
+            db_manager = ConnServices.get_pivot_db_manager(conn_params=_conn_params)
+
+        response = QuerySet(
+            query=query,
+            db_manager=db_manager,
+            dimensional_structure=metadata.dimensional_structure,
+            pivot_childs=pivot_childs,
         )
         return response
 

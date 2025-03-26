@@ -217,6 +217,7 @@ class QuerySet:
             query=self.query,
             orient=orient,
             dim_structure=_dim_structure,
+            **self.extra_query_kwargs,
             **kwargs,
         )
         return response
@@ -253,10 +254,10 @@ class QuerySet:
 
     def filter(self, *args, **kwargs):
         clone = self._clone()
-        existing_filter_params = clone.query.filter[:]  # copy of existing query params
+        existing_filter_params = clone.query.filters[:]  # copy of existing query params
         new_filter_params = self._kwargs_to_query(**kwargs)
         existing_filter_params += new_filter_params
-        clone.query.filter = existing_filter_params
+        clone.query.filters = existing_filter_params
 
         if self.is_cached:
             QueryServices().update_or_create(query=clone.query)
@@ -327,7 +328,7 @@ class QuerySet:
         except Exception as e:
             pass
         response = response or self.db_manager.retrieve(
-            self.query, dim_structure=dim_structure
+            self.query, dim_structure=dim_structure, **self.extra_query_kwargs
         )
 
         m = {
@@ -368,6 +369,7 @@ class QuerySet:
             query=self.query,
             db_manager=self.db_manager,
             dimensional_structure=self.dimensional_structure,
+            **self.extra_query_kwargs,
         )
         query_params = self.query.__dict__.copy()
         c.query = Query(**query_params)

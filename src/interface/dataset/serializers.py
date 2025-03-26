@@ -32,6 +32,8 @@ class MetadataResponseSerializer(BaseModel):
     created_date: Optional[str] = None
     dimensional_structure: Optional[Dict[str, Any]] = None
     description: Optional[str] = None
+    dataset_type: Optional[str] = None
+    obt_structure: Optional[Dict[str, Any]] = None
 
     class Config:
         orm_mode = True
@@ -42,6 +44,7 @@ class MetadataListResponseSerializer(BaseModel):
     dataset_name: str
     description: str
     created_date: Optional[str] = None
+    dataset_type: Optional[str] = None
 
     class Config:
         orm_mode = True

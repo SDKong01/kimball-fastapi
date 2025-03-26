@@ -71,6 +71,12 @@ class AppSetting(BaseSettings):
     REDIS_PASS: str = getenv('REDIS_PASS', '')
     REDIS_DB: int = getenv('REDIS_DB', 0)
 
+    # CLICKHOUSE settings
+    CLICKHOUSE_HOST: str = getenv('CLICKHOUSE_HOST', 'localhost')
+    CLICKHOUSE_PORT: str = str(getenv('CLICKHOUSE_PORT', 8000))
+    CLICKHOUSE_USER: str = getenv('CLICKHOUSE_USER', '')
+    CLICKHOUSE_DB: str = getenv('CLICKHOUSE_DB', '')
+
     ALLOWED_ORIGINS: Any = getenv('ALLOWED_ORIGINS')
 
     LOGGING = LogSettings().dict()
@@ -107,6 +113,9 @@ class AppSetting(BaseSettings):
 
     cache_client_connector: Any = None
     cache_client_params: Any = None
+
+    clickhouse_client_connector: Any = None
+    clickhouse_client_params: Any = None
 
     testing_client: str = getenv('TESTING_CLIENT', 'test_client')
 
