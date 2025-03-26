@@ -21,3 +21,4 @@ cx_Oracle==8.3.0
 redis==5.2.1
 rapidfuzz==3.12.1
 logging_utilities==5.0.0
+clickhouse_connect==0.8.15
