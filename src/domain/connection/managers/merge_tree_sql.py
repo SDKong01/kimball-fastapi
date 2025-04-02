@@ -132,12 +132,20 @@ WHERE TABLE_NAME LIKE '%AUD%' OR TABLE_NAME LIKE '%TRAN%'"""
             self.fields = "*"
             return
 
-        fact_column = "sales_revenue"  # TODO: remove hardcoded value
+        def parse_field_name(operation, fact_column, field_name):
+            return f"{operation} of {fact_column} at {field_name}"
+
+        default_fact_column = "sales_revenue"  # TODO: remove hardcoded value
 
         for p in query.pivot:
-            field_name = self._clean_str(p[1])
+            pivot_column = p["pivot"]
+            column_name = p["column"]
+            fact_column = p.get("fact_column", default_fact_column)
+            agg_type = p.get("agg", "SUM").upper()
+            field_name = self._clean_str(column_name)
+            field_name = parse_field_name(agg_type, fact_column, field_name)
             self.fields = (
-                f"SUM(CASE WHEN {self.table_alias}.{p[0]} = '{p[1]}' THEN {self.table_alias}.{fact_column} ELSE 0 END) AS "
+                f"{agg_type}(CASE WHEN {self.table_alias}.{pivot_column} = '{column_name}' THEN {self.table_alias}.{fact_column} ELSE 0 END) AS "
                 + f'"{field_name}"'
             )
 

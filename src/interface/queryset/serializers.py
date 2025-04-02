@@ -20,7 +20,7 @@ class QueryCreateSerializer(BaseModel):
     table: str = None
     is_cached: bool = True
     date_column: str = None
-    pivot: Optional[List[List[str]]] = None
+    pivot: Optional[List[Dict[str, str]]] = None
 
 
 class QueryResponseSerializer(BaseModel):
@@ -43,7 +43,7 @@ class QueryResponseSerializer(BaseModel):
     db_schema: str = None
     table: str = None
     date_column: str = None
-    pivot: Optional[List[List[str]]] = None
+    pivot: Optional[List[Dict[str, str]]] = None
 
 
 class ConnParamsIDSerializer(BaseModel):
