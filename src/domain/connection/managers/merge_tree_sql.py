@@ -237,9 +237,8 @@ WHERE TABLE_NAME LIKE '%AUD%' OR TABLE_NAME LIKE '%TRAN%'"""
 
         ins_statemens = []
         for field, values in filters_map.items():
-            ins_statemens.append(
-                f"{field} IN ({', '.join([f'\'{v}\'' for v in values])})"
-            )
+            _f = field + " IN " + "(" + ", ".join([f"'{v}'" for v in values]) + ")"
+            ins_statemens.append(_f)
 
         ands = list("AND" for x in range(len(ins_statemens))) or [
             " ",
