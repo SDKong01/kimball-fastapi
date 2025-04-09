@@ -1,5 +1,7 @@
+import json
 from typing import List
 
+import pandas as pd
 from src.domain.dataset.models import Metadata
 from src.domain.dataset.services import MetadataServices, DatasetServices
 from src.domain.queryset.models import Query
@@ -28,6 +30,37 @@ class DatasetAppServices:
             )
         )
         return response.to_json()
+
+    def get_stats(
+        self,
+        dataset_id: str,
+        query_id: str = None,
+    ):
+        response = DatasetServices.retrive_dim_version(
+            dataset_id=dataset_id, force_query=True, query_id=query_id
+        )
+
+        df = pd.DataFrame(response.to_json())
+        df_stats = df.describe(include="all").to_dict()
+
+        json_stats = []
+        for key, value in df_stats.items():
+            if key == "Calendar Date":
+                continue
+            json_stats.append(
+                {
+                    "target": key,
+                    "mean": value["mean"],
+                    "stddev": value["std"],
+                    "min": value["min"],
+                    "max": value["max"],
+                    "unique": int(value["count"]),
+                    "missing": int(df[key].isna().sum()),
+                }
+            )
+        # print(json_stats)
+
+        return json_stats
 
     def get_available_fields(
         self,

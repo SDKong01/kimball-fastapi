@@ -266,6 +266,12 @@ class DBManager(ABC):
             detail="Method not available for this connection",
         )
 
+    def stats(self, *args, **kwargs) -> Dict[str, Any]:
+        raise MethodNotAvailable(
+            method="stats",
+            detail="Method not available for this connection",
+        )
+
     @abstractmethod
     def to_json(self, query, orient: str = "records", **kwargs) -> List[Dict[str, Any]]:
         pass

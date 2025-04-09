@@ -313,6 +313,25 @@ class QuerySet:
             query=self.query, orient=orient, *args, **kwargs
         )
 
+    def stats(self, use_pd: bool = False, *args, **kwargs):
+        if not self.query.fields or not self.query.pivot:
+            return []
+            raise Exception("Define fields or pivot to get stats")
+
+        _dim_structure = (
+            DimmensionalStructure(**self.dimensional_structure)
+            if self.dimensional_structure
+            else None
+        )
+
+        response = self.db_manager.stats(
+            query=self.query,
+            dim_structure=_dim_structure,
+            **self.extra_query_kwargs,
+            **kwargs,
+        )
+        return response
+
     def _fetch_all(self, method: str = "all"):
         response = None
         # if self.db_manager.cache_enabled:

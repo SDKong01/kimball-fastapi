@@ -28,9 +28,7 @@ class ClickHouseClient(ConnClient):
     def stablish_connection(self, **kwargs):
         _params = {**self.conn_params.params}
         try:
-            print("params", _params)
             url = f"clickhouse://{_params['host']}:{_params['port']}/{_params['database']}"
-            print("url", url)
             connection = clickhouse_connect.get_client(
                 host="34.122.71.71",  # What the hell are you doing here?
                 port=_params["port"],

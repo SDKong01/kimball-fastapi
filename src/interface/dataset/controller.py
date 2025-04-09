@@ -203,3 +203,20 @@ class DatasetController:
     async def delete_temp_collections(self):
         self.service.del_temp_collections()
         return JSONResponse(content={"success": True})
+
+    @Get(
+        "/stats",
+        summary="Get dataset stats",
+        description="Get dataset stats.",
+        operation_id="get_dataset_stats",
+    )
+    async def get_stats(
+        self,
+        dataset_id: str,
+        query_id: str = None,
+    ):
+        response = self.service.get_stats(
+            dataset_id=dataset_id,
+            query_id=query_id,
+        )
+        return JSONResponse(content={"success": True, "result": response})
