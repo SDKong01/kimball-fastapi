@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Optional
 from pydantic import BaseModel
 
 
@@ -13,6 +13,7 @@ class DatasetCreateSerializer(BaseModel):
     default_forecas: int = 6
     is_self_hosted: bool = False
     local_dataset_id: str = None
+    data_source: Optional[str] = None
 
 
 class DatasetCreateFromTempSerializer(BaseModel):

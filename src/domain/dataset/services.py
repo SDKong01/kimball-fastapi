@@ -335,6 +335,7 @@ class DatasetServices:
         default_forecas: int = 6,
         is_dim: bool = False,
         local_dataset_id: str = None,
+        data_source: str = None,
     ) -> Metadata:
         _db_manager = ConnServices.get_db_manager(conn_params)
         # queryset = QuerySet(query=query, db_manager=_db_manager).limit(1)
@@ -369,7 +370,7 @@ class DatasetServices:
             date_column=getattr(query, "date_column", None),
             target_columns=None,
             dataset_type=None,
-            data_source=None,
+            data_source=data_source,
             description=description,
             tags=tags,
         )

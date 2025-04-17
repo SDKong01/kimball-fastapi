@@ -107,6 +107,7 @@ class DatasetAppServices:
         default_forecas: int = 6,
         is_dim: bool = False,
         local_dataset_id: str = None,
+        data_source: str = None,
     ):
         # print("conn params in aplication", conn_params)
         if is_dim:
@@ -117,6 +118,7 @@ class DatasetAppServices:
         response = DatasetServices().create(
             description=description,
             dataset_name=dataset_name,
+            data_source=data_source,
             conn_params=conn_params,
             query=_query,
             clone=clone,

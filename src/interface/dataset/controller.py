@@ -117,6 +117,7 @@ class DatasetController:
             default_forecas=params.default_forecas,
             is_dim=params.is_dim,
             local_dataset_id=params.local_dataset_id,
+            data_source=params.data_source,
         )
         # print("response", response)
         return JSONResponse(
