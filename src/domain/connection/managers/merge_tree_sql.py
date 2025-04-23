@@ -146,7 +146,9 @@ WHERE TABLE_NAME LIKE '%AUD%' OR TABLE_NAME LIKE '%TRAN%'"""
             if field_name != fact_column:
                 col_name = f"{fact_column} ({field_name})"
             if query.filters:
-                col_name = f"{col_name} ({', '.join([f.value for f in query.filters])})"
+                col_name = (
+                    f"{col_name} ({' · '.join([f.value for f in query.filters])})"
+                )
             return col_name
 
         default_fact_column = "sales_revenue"  # TODO: remove hardcoded value
