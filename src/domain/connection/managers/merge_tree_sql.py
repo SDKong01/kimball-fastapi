@@ -369,7 +369,8 @@ WHERE TABLE_NAME LIKE '%AUD%' OR TABLE_NAME LIKE '%TRAN%'"""
         parsed_fields = f"({', '.join(fields)})"
         insert_statement = f"INSERT INTO {db}.{table} {parsed_fields} VALUES "
         for row in rows_to_insert:
-            insert_statement += f"({', '.join([f"'{x}'" for x in row.values()])}), "
+            list_parsed = [f"'{x}'" for x in row.values()]
+            insert_statement += f"({', '.join(list_parsed)}), "
         insert_statement = insert_statement[:-2] + ";"
         self.conn.query(insert_statement)
 
