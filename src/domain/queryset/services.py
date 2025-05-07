@@ -305,8 +305,8 @@ class QuerySet:
     def insert_one(self, *args, **kwargs):
         return self.db_manager.create(*args, **kwargs)
 
-    def insert_many(self, *args, **kwargs):
-        return self.db_manager.create(*args, **kwargs)
+    def insert_many(self, *args):
+        return self.db_manager.create(self.query, *args)
 
     def as_pd(self, orient: str = "records,", *args, **kwargs):
         return self.db_manager.to_pandas(

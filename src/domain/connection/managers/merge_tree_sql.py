@@ -340,3 +340,38 @@ WHERE TABLE_NAME LIKE '%AUD%' OR TABLE_NAME LIKE '%TRAN%'"""
 
         # print(query_string)
         return result
+
+    def create(self, query=Query, *args):
+        if not args:
+            raise Exception("No data to insert")
+        fields = tuple(args[0].keys())
+        table = query.table
+        db = query.db
+
+        check_statement = f"SELECT {', '.join(fields)} FROM {db}.{table} WHERE "
+        for row in args:
+            conditions = " AND ".join(
+                [f"{field} = '{value}'" for field, value in row.items()]
+            )
+            check_statement += f"({conditions}) OR "
+        check_statement = check_statement[:-4] + ";"
+
+        existing_records = self.conn.query(check_statement).result_rows
+        existing_set = {tuple(record) for record in existing_records}
+
+        rows_to_insert = [
+            row for row in args if tuple(row.values()) not in existing_set
+        ]
+
+        if not rows_to_insert:
+            return True
+
+        insert_statement = (
+            f"INSERT INTO {db}.{table} {f'({', '.join(fields)})'} VALUES "
+        )
+        for row in rows_to_insert:
+            insert_statement += f"({', '.join([f"'{x}'" for x in row.values()])}), "
+        insert_statement = insert_statement[:-2] + ";"
+        self.conn.query(insert_statement)
+
+        return True

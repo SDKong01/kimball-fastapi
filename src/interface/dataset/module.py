@@ -1,8 +1,16 @@
-from src.interface.dataset.controller import DatasetController, MetadataController
-from src.application.dataset.services import DatasetAppServices, MetadataAppServices
+from src.interface.dataset.controller import (
+    DatasetController,
+    MetadataController,
+    ForecastController,
+)
+from src.application.dataset.services import (
+    DatasetAppServices,
+    MetadataAppServices,
+    ForecastAppServices,
+)
 
 
 class DatasetModule:
     def __init__(self):
-        self.providers = [DatasetAppServices, MetadataAppServices]
-        self.controllers = [DatasetController, MetadataController]
+        self.providers = [DatasetAppServices, MetadataAppServices, ForecastAppServices]
+        self.controllers = [DatasetController, MetadataController, ForecastController]

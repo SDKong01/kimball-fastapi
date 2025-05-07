@@ -49,3 +49,7 @@ class MetadataListResponseSerializer(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class ForecastResultCreateSerializer(BaseModel):
+    results: List[Dict[str, Any]] = None

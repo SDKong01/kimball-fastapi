@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Dict, Any
 
 import pandas as pd
 from src.domain.dataset.models import Metadata
@@ -186,3 +186,13 @@ class MetadataAppServices:
         self,
     ):
         pass
+
+
+class ForecastAppServices:
+    def __init__(self):
+        pass
+
+    def create(self, data=List[Dict[str, Any]]) -> None:
+
+        DatasetServices.create_forecast_results(data=data)
+        return

@@ -1,14 +1,20 @@
+from typing import List, Dict, Optional, Any
 from nest.core import Controller, Depends, Get, Post, Delete
 from fastapi import UploadFile, File, status, Response, HTTPException
 from fastapi.responses import JSONResponse
 from dataclass_type_validator import TypeValidationError
 
-from src.application.dataset.services import DatasetAppServices, MetadataAppServices
+from src.application.dataset.services import (
+    DatasetAppServices,
+    MetadataAppServices,
+    ForecastAppServices,
+)
 from src.interface.dataset.serializers import (
     DatasetCreateSerializer,
     DatasetCreateFromTempSerializer,
     MetadataResponseSerializer,
     MetadataListResponseSerializer,
+    ForecastResultCreateSerializer,
 )
 
 from src.domain.connection.models import ConnParams
@@ -221,3 +227,23 @@ class DatasetController:
             query_id=query_id,
         )
         return JSONResponse(content={"success": True, "result": response})
+
+
+@Controller(tag="Forecast", prefix="v1/forecast")
+class ForecastController:
+    service: ForecastAppServices = Depends(ForecastAppServices)
+
+    @Post(
+        "/results",
+        summary="Create forecast results",
+        description="Create forecast results.",
+        operation_id="create_forecast_results",
+    )
+    async def create_forecast_results(
+        self,
+        params: ForecastResultCreateSerializer,
+    ):
+        self.service.create(
+            data=params.results,
+        )
+        return JSONResponse(content={"success": True})

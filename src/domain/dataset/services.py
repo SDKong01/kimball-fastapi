@@ -447,6 +447,22 @@ class DatasetServices:
         return response
 
     @staticmethod
+    def create_forecast_results(
+        data=List[Dict[str, Any]],
+    ) -> None:
+        db_manager = DatasetServices.system_obt_db_manager()
+        query_obj = Query(
+            db=settings.CLICKHOUSE_DB,
+            table="forecast_results",
+        )
+        queryset = QuerySet(
+            query=query_obj,
+            db_manager=db_manager,
+        )
+        queryset.insert_many(*data)
+        return
+
+    @staticmethod
     def retrive_dim_version(
         dataset_id: str,
         force_query: bool = False,
