@@ -192,3 +192,7 @@ cython_debug/
 */*/*/*/*/mypy_cache/
 */*/*/*/*/pytype/
 */*/*/*/*/pyre/
+
+
+#codebuild env vars in json file for aws cli
+codebuild-env-vars.json

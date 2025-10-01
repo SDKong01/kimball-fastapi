@@ -1,0 +1,20 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "us-east-2"
+    APP_PORT: "8080"          
+
+phases:
+  build:
+    commands:
+      - echo "Reading imageDetail.json from artifacts..."
+      - IMAGE_URI=$(python -c "import json; print(json.load(open('imageDetail.json'))['imageUri'])")
+      - echo "Deploying $IMAGE_URI to App Runner..."
+      - aws apprunner update-service \
+          --service-arn "$APP_RUNNER_SERVICE_ARN" \
+          --source-configuration ImageRepository="{ImageIdentifier=\"$IMAGE_URI\",ImageRepositoryType=\"ECR\",ImageConfiguration={Port=\"$APP_PORT\"}}" \
+          --region "$AWS_REGION"
+artifacts:
+  files:
+    - imageDetail.json

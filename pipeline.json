@@ -1,0 +1,75 @@
+{
+    "pipeline": {
+      "name": "kimball-fastapi-pipeline-sdk",
+      "roleArn": "arn:aws:iam::592172380963:role/codepipeline-kimball-sdk-role",
+      "artifactStore": {
+        "type": "S3",
+        "location": "codepipelinestartertempla-codepipelineartifactsbuc-jwvzarjni3uz"
+      },
+      "stages": [
+        {
+          "name": "Source",
+          "actions": [
+            {
+              "name": "GitHub_Source",
+              "actionTypeId": {
+                "category": "Source",
+                "owner": "AWS",
+                "provider": "CodeStarSourceConnection",
+                "version": "1"
+              },
+              "outputArtifacts": [{ "name": "SourceArtifact" }],
+              "configuration": {
+                "ConnectionArn": "arn:aws:codeconnections:us-east-2:592172380963:connection/3ad369cc-5a95-45da-876e-fce3cb9b8a8a",
+                "FullRepositoryId": "KainamAI/kimball-fastapi",
+                "BranchName": "sdk-kimball-test",
+                "OutputArtifactFormat": "CODE_ZIP"
+              },
+              "runOrder": 1
+            }
+          ]
+        },
+        {
+          "name": "Build",
+          "actions": [
+            {
+              "name": "Docker_Build_and_Push",
+              "actionTypeId": {
+                "category": "Build",
+                "owner": "AWS",
+                "provider": "CodeBuild",
+                "version": "1"
+              },
+              "inputArtifacts": [{ "name": "SourceArtifact" }],
+              "outputArtifacts": [{ "name": "BuildArtifact" }],
+              "configuration": {
+                "ProjectName": "kimball-fastapi-build-sdk"
+              },
+              "runOrder": 1
+            }
+          ]
+        },
+        {
+          "name": "Deploy",
+          "actions": [
+            {
+              "name": "Deploy_to_AppRunner",
+              "actionTypeId": {
+                "category": "Build",
+                "owner": "AWS",
+                "provider": "CodeBuild",
+                "version": "1"
+              },
+              "inputArtifacts": [{ "name": "BuildArtifact" }],
+              "configuration": {
+                "ProjectName": "kimball-fastapi-deploy-sdk"
+              },
+              "runOrder": 1
+            }
+          ]
+        }
+      ],
+      "version": 1
+    }
+  }
+  
