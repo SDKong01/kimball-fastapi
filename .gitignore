@@ -196,3 +196,7 @@ cython_debug/
 
 #codebuild env vars in json file for aws cli
 codebuild-env-vars.json
+*.json
+!pipeline.json
+!buildspec.yml
+!buildspec-deploy.yml
