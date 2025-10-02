@@ -19,7 +19,10 @@ phases:
       - IMAGE_URI=$(python -c "import json,sys; print(json.load(open('imageDetail.json'))['imageUri'])")
 
       # Show what we'll use (quoted so you can see empties/whitespace)
-      - printf 'ServiceARN=%q\nRegion=%q\nImageURI=%q\nPort=%q\n' "$APP_RUNNER_SERVICE_ARN" "$AWS_REGION" "$IMAGE_URI" "$APP_PORT"
+      - echo "ServiceARN=$APP_RUNNER_SERVICE_ARN"
+      - echo "Region=$AWS_REGION"
+      - echo "ImageURI=$IMAGE_URI"
+      - echo "Port=$APP_PORT"
 
       # Build a clean JSON for --source-configuration
       - |
