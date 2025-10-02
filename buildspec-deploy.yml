@@ -11,8 +11,8 @@ phases:
       - set -e
 
       # Required env var must be set in the CodeBuild project's environment (or SSM)
-      - : "${APP_RUNNER_SERVICE_ARN:?APP_RUNNER_SERVICE_ARN missing}"
-      - : "${AWS_REGION:?AWS_REGION missing}"
+      - test -n "$APP_RUNNER_SERVICE_ARN" || { echo "APP_RUNNER_SERVICE_ARN missing"; exit 1; }
+      - test -n "$AWS_REGION" || { echo "AWS_REGION missing"; exit 1; }
 
       # Read image URI from the Build stage artifact
       - test -f imageDetail.json
