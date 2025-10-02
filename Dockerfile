@@ -6,6 +6,21 @@ ENV APP_HOME /app
 WORKDIR $APP_HOME
 COPY . ./
 
+# Environment variables for the application
+ENV PYTHONPATH=.
+ENV GENERAL_DB_NAME=813dcf27-3de3-4c07-bfb0-140977739ee8
+ENV GENERAL_DB_URL=mongodb+srv://generic-user:pZJ0t5nQPwkOJ7BK@dev.kj6fy.mongodb.net/
+ENV CLICKHOUSE_HOST=3.150.3.160
+ENV CLICKHOUSE_PORT=8123
+ENV CLICKHOUSE_USER=default
+ENV CLICKHOUSE_PASSWORD=Kainam2023
+ENV CLICKHOUSE_DB=default
+ENV AIRFLOW_URL=http://3.144.122.44:8088
+ENV AIRFLOW_USER=kainam
+ENV AIRFLOW_PASSWORD=Kainam2023
+ENV OPENAI_API_KEY=${OPENAI_API_KEY}
+ENV ALLOWED_ORIGINS=*
+
 RUN pip install --no-cache-dir -r requirements/requirements.txt
 RUN pip install langchain-google-genai==1.0.8
 
