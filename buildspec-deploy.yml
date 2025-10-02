@@ -8,7 +8,7 @@ env:
 phases:
   build:
     commands:
-      - set -euo pipefail
+      - set -e
 
       # Required env var must be set in the CodeBuild project's environment (or SSM)
       - : "${APP_RUNNER_SERVICE_ARN:?APP_RUNNER_SERVICE_ARN missing}"
