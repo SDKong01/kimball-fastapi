@@ -3,18 +3,44 @@ version: 0.2
 env:
   variables:
     AWS_REGION: "us-east-2"
-    APP_PORT: "8080"          
+    APP_PORT: "8080"   # <-- make sure your container actually listens on this port
 
 phases:
   build:
     commands:
-      - echo "Reading imageDetail.json from artifacts..."
-      - IMAGE_URI=$(python -c "import json; print(json.load(open('imageDetail.json'))['imageUri'])")
-      - echo "Deploying $IMAGE_URI to App Runner..."
-      - aws apprunner update-service \
-          --service-arn "$APP_RUNNER_SERVICE_ARN" \
-          --source-configuration ImageRepository="{ImageIdentifier=\"$IMAGE_URI\",ImageRepositoryType=\"ECR\",ImageConfiguration={Port=\"$APP_PORT\"}}" \
-          --region "$AWS_REGION"
+      - set -euo pipefail
+
+      # Required env var must be set in the CodeBuild project's environment (or SSM)
+      - : "${APP_RUNNER_SERVICE_ARN:?APP_RUNNER_SERVICE_ARN missing}"
+      - : "${AWS_REGION:?AWS_REGION missing}"
+
+      # Read image URI from the Build stage artifact
+      - test -f imageDetail.json
+      - IMAGE_URI=$(python -c "import json,sys; print(json.load(open('imageDetail.json'))['imageUri'])")
+
+      # Show what we'll use (quoted so you can see empties/whitespace)
+      - printf 'ServiceARN=%q\nRegion=%q\nImageURI=%q\nPort=%q\n' "$APP_RUNNER_SERVICE_ARN" "$AWS_REGION" "$IMAGE_URI" "$APP_PORT"
+
+      # Build a clean JSON for --source-configuration
+      - |
+        cat > source-config.json <<JSON
+        {
+          "ImageRepository": {
+            "ImageIdentifier": "${IMAGE_URI}",
+            "ImageRepositoryType": "ECR",
+            "ImageConfiguration": { "Port": "${APP_PORT}" }
+          }
+        }
+        JSON
+
+      # Sanity print
+      - cat source-config.json
+
+      # Single line — no line continuations
+      - aws apprunner update-service --service-arn "$APP_RUNNER_SERVICE_ARN" --source-configuration file://source-config.json --region "$AWS_REGION"
+
 artifacts:
   files:
+    - source-config.json
     - imageDetail.json
+
