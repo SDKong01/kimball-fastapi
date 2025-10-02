@@ -35,3 +35,4 @@ phases:
 artifacts:
   files:
     - imageDetail.json
+    - buildspec-deploy.yml
