@@ -31,7 +31,23 @@ phases:
           "ImageRepository": {
             "ImageIdentifier": "${IMAGE_URI}",
             "ImageRepositoryType": "ECR",
-            "ImageConfiguration": { "Port": "${APP_PORT}" }
+            "ImageConfiguration": {
+              "Port": "${APP_PORT}",
+              "RuntimeEnvironmentVariables": {
+                "CORS_ALLOW_ORIGINS": "*",
+                "CORS_ALLOW_METHODS": "GET,POST,PUT,DELETE,OPTIONS",
+                "CORS_ALLOW_HEADERS": "*",
+                "ALLOW_ORIGINS": "*",
+                "ALLOW_METHODS": "GET,POST,PUT,DELETE,OPTIONS",
+                "ALLOW_HEADERS": "*",
+                "ALLOWED_ORIGINS": "*",
+                "ALLOWED_METHODS": "GET,POST,PUT,DELETE,OPTIONS",
+                "ALLOWED_HEADERS": "*",
+                "CORS_ORIGINS": "*",
+                "CORS_METHODS": "GET,POST,PUT,DELETE,OPTIONS",
+                "CORS_HEADERS": "*"
+              }
+            }
           }
         }
         JSON
