@@ -29,7 +29,17 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: App):
+    print("🚀 Starting application...")
+    print(f"🔍 Environment variables loaded:")
+    print(f"   MONGO_HOST: {settings.MONGO_HOST}")
+    print(f"   MONGO_PORT: {settings.MONGO_PORT}")
+    print(f"   REDIS_HOST: {settings.REDIS_HOST}")
+    print(f"   REDIS_PORT: {settings.REDIS_PORT}")
+    print(f"   CLICKHOUSE_HOST: {settings.CLICKHOUSE_HOST}")
+    print(f"   CLICKHOUSE_PORT: {settings.CLICKHOUSE_PORT}")
+    
     try:
+        print(f"🔍 Attempting MongoDB connection to: {settings.MONGO_HOST}:{settings.MONGO_PORT}")
         # Stablis connection to app db
         db_params = ConnParams(
             engine="mongodb",
@@ -50,10 +60,12 @@ async def lifespan(app: App):
         print("✅ MongoDB connection established")
     except Exception as e:
         print(f"⚠️ MongoDB connection failed: {e}")
+        print(f"⚠️ MongoDB settings: host={settings.MONGO_HOST}, port={settings.MONGO_PORT}, user={settings.MONGO_USER}")
         settings.db_client_connector = None
         settings.db_client_params = None
 
     try:
+        print(f"🔍 Attempting Redis connection to: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
         # Stablis connection to cache db
         cache_params = ConnParams(
             engine="redis",
@@ -72,10 +84,12 @@ async def lifespan(app: App):
         print("✅ Redis connection established")
     except Exception as e:
         print(f"⚠️ Redis connection failed: {e}")
+        print(f"⚠️ Redis settings: host={settings.REDIS_HOST}, port={settings.REDIS_PORT}")
         settings.cache_client_connector = None
         settings.cache_client_params = None
 
     try:
+        print(f"🔍 Attempting ClickHouse connection to: {settings.CLICKHOUSE_HOST}:{settings.CLICKHOUSE_PORT}")
         # Stablis connection to clickhouse db
         clickhouse_params = ConnParams(
             engine="clickhouse",
@@ -94,6 +108,7 @@ async def lifespan(app: App):
         print("✅ ClickHouse connection established")
     except Exception as e:
         print(f"⚠️ ClickHouse connection failed: {e}")
+        print(f"⚠️ ClickHouse settings: host={settings.CLICKHOUSE_HOST}, port={settings.CLICKHOUSE_PORT}, user={settings.CLICKHOUSE_USER}")
         settings.clickhouse_client_connector = None
         settings.clickhouse_client_params = None
 
